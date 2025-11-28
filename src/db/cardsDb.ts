@@ -1,4 +1,4 @@
-import { FlashcardData, FlashcardSet } from '../components/Flashcard';
+import { FlashcardData, FlashcardSet } from '../flashcards/types';
 
 const DB_NAME = 'kids-flashcards-db';
 const STORE_NAME = 'cards';
