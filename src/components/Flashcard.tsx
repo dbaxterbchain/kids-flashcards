@@ -1,4 +1,4 @@
-import { KeyboardEvent, useState } from 'react';
+import { KeyboardEvent, MouseEvent, useEffect, useRef, useState } from 'react';
 import './Flashcard.css';
 
 export type FlashcardData = {
@@ -6,6 +6,7 @@ export type FlashcardData = {
   name: string;
   imageUrl: string;
   createdAt: number;
+  audioUrl?: string;
 };
 
 type FlashcardProps = {
@@ -17,6 +18,9 @@ type FlashcardProps = {
 
 export function Flashcard({ card, showActions = true, onEdit, onDelete }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [playError, setPlayError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleFlip = () => setIsFlipped((current) => !current);
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -24,6 +28,42 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
       event.preventDefault();
       toggleFlip();
     }
+  };
+
+  useEffect(() => {
+    if (!card.audioUrl) return undefined;
+    const audio = new Audio(card.audioUrl);
+    audio.preload = 'auto';
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      audioRef.current = null;
+    };
+  }, [card.audioUrl]);
+
+  useEffect(() => {
+    if (!isFlipped || muted || !audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    audioRef.current
+      .play()
+      .then(() => setPlayError(null))
+      .catch((error) => {
+        console.warn('Audio play blocked', error);
+        setPlayError('Tap play to hear audio');
+      });
+  }, [isFlipped, muted]);
+
+  const handleManualPlay = (event: MouseEvent) => {
+    event.stopPropagation();
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    audioRef.current
+      .play()
+      .then(() => setPlayError(null))
+      .catch((error) => {
+        console.warn('Audio play blocked', error);
+        setPlayError('Tap play to hear audio');
+      });
   };
 
   return (
@@ -66,6 +106,29 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
         </div>
         <div className="flashcard-face flashcard-back">
           <p>{card.name}</p>
+          {card.audioUrl && (
+            <div className="audio-controls">
+              <button
+                type="button"
+                className="tiny-btn"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setMuted((current) => !current);
+                }}
+              >
+                {muted ? 'Unmute' : 'Mute'}
+              </button>
+              <button
+                type="button"
+                className="tiny-btn"
+                onClick={handleManualPlay}
+                aria-label={`Play audio for ${card.name}`}
+              >
+                Play
+              </button>
+              {playError && <span className="audio-hint">{playError}</span>}
+            </div>
+          )}
         </div>
       </div>
     </div>

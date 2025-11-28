@@ -72,6 +72,24 @@
   margin: 0;
 }
 
+.audio-controls {
+  margin-top: 1rem;
+    position: absolute;
+    bottom: 10px;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.audio-hint {
+  font-size: 0.9rem;
+  color: #0f172a;
+  opacity: 0.8;
+}
+
 .flashcard-actions {
   position: absolute;
   top: 12px;
