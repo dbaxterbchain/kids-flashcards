@@ -163,66 +163,8 @@ export default function App() {
   };
 
   const sortedCards = useMemo(
-  () => {
-    console.log('Sorting cards', cards);
-    return [...cards];
-  },
-  [cards],
-);
-
-const availableSets = useMemo(() => {
-  const base = [...sets];
-  const hasUncategorized = cards.some((card) => !card.setIds || card.setIds.length === 0);
-  if (hasUncategorized) {
-    base.push({ id: 'uncategorized', name: 'No set' });
-  }
-  return base;
-}, [sets, cards]);
-
-const filteredCards = useMemo(() => {
-  const filtered = visibleSetIds.length === 0
-    ? sortedCards
-    : sortedCards.filter((card) => {
-        const cardSets = card.setIds ?? [];
-        if (cardSets.length === 0) {
-          return visibleSetIds.includes('uncategorized');
-        }
-        return cardSets.some((id) => visibleSetIds.includes(id));
-      });
-
-  const toNumeric = (value: string) => {
-    const num = Number(value);
-    return Number.isFinite(num) ? num : null;
-  };
-
-  const compareAlpha = (a: FlashcardData, b: FlashcardData) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-  const compareNumeric = (a: FlashcardData, b: FlashcardData) => {
-    const aNum = toNumeric(a.name);
-    const bNum = toNumeric(b.name);
-    if (aNum === null && bNum === null) return compareAlpha(a, b);
-    if (aNum === null) return 1;
-    if (bNum === null) return -1;
-    return aNum - bNum;
-  };
-
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sortMode) {
-      case 'alpha-asc':
-        return compareAlpha(a, b);
-      case 'alpha-desc':
-        return compareAlpha(b, a);
-      case 'num-asc':
-        return compareNumeric(a, b);
-      case 'num-desc':
-        return compareNumeric(b, a);
-      default:
-        return compareAlpha(a, b);
-    }
-  });
-
-  return sorted;
-}, [sortedCards, visibleSetIds, sortMode]);
+    () => {
+      console.log('Sorting cards', cards);
       return [...cards].sort((a, b) => b.createdAt - a.createdAt);
     },
     [cards],
@@ -703,15 +645,6 @@ const filteredCards = useMemo(() => {
               />
               <span>Show edit & delete buttons</span>
             </label>
-            <label className="sort">
-              <span>Sort</span>
-              <select value={sortMode} onChange={(event) => setSortMode(event.target.value as typeof sortMode)}>
-                <option value="alpha-asc">Alphabetical A → Z</option>
-                <option value="alpha-desc">Alphabetical Z → A</option>
-                <option value="num-asc">Numbers 0 → 10</option>
-                <option value="num-desc">Numbers 10 → 0</option>
-              </select>
-            </label>
           </div>
         </div>
         {loading ? (
@@ -735,4 +668,5 @@ const filteredCards = useMemo(() => {
     </div>
   );
 }
+
 

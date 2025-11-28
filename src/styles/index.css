@@ -377,21 +377,6 @@ body {
   gap: 0.5rem;
 }
 
-.sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-weight: 700;
-}
-
-.sort select {
-  padding: 0.35rem 0.5rem;
-  border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  font-weight: 700;
-}
-
 .toggle {
   display: inline-flex;
   align-items: center;

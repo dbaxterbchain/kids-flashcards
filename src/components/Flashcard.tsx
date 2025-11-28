@@ -7,6 +7,12 @@ export type FlashcardData = {
   imageUrl: string;
   createdAt: number;
   audioUrl?: string;
+  setIds?: string[];
+};
+
+export type FlashcardSet = {
+  id: string;
+  name: string;
 };
 
 type FlashcardProps = {
