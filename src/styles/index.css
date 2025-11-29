@@ -139,6 +139,13 @@ body {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
 }
 
+.card-maker__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .card-form {
   display: grid;
   gap: 1rem;

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm } from './components/CardForm';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
@@ -19,6 +19,7 @@ export default function App() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(true);
+  const [cardFormOpen, setCardFormOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
   const [newSetName, setNewSetName] = useState('');
@@ -40,14 +41,15 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
+      // Load cards and sets from IndexedDB
       try {
         const { cards: storedCards, sets: storedSets, visibleSetIds: defaults } = await loadCardsAndSets();
         if (cancelled) return;
+
         setCards(storedCards);
         setSets(storedSets);
         setVisibleSetIds(defaults);
       } catch (error) {
-        console.error('Failed to load cards from IndexedDB', error);
         if (!cancelled) {
           setCards(defaultCards);
           setSets(defaultSets);
@@ -64,7 +66,7 @@ export default function App() {
       cancelled = true;
       resetRecording();
     };
-  }, [resetRecording]);
+  }, []);
 
   const availableSets = useMemo(() => {
     const base = [...sets];
@@ -77,6 +79,7 @@ export default function App() {
 
   const filteredCards = useMemo(() => {
     if (visibleSetIds.length === 0) return [];
+
     const sorted = [...cards].sort((a, b) => b.createdAt - a.createdAt);
     return sorted.filter((card) => {
       const cardSets = card.setIds ?? [];
@@ -192,14 +195,20 @@ export default function App() {
   };
 
   const toggleVisibleSet = (setId: string) => {
-    setVisibleSetIds((current) => (current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId]));
+    setVisibleSetIds((current) => (current.includes(setId) 
+    ? current.filter((id) => id !== setId) 
+    : [...current, setId]));
   };
 
-  const selectAllVisibleSets = () => setVisibleSetIds(availableSets.map((set) => set.id));
+  const selectAllVisibleSets = () => {
+    console.log('Selecting all sets');
+    setVisibleSetIds(availableSets.map((set) => set.id));
+  };
 
   const clearVisibleSets = () => setVisibleSetIds([]);
 
   const handleEdit = (card: FlashcardData) => {
+    setCardFormOpen(true);
     setEditingId(card.id);
     setName(card.name);
     setImageData(card.imageUrl);
@@ -258,6 +267,8 @@ export default function App() {
         onStopRecording={stopRecording}
         onAudioFileChange={handleAudioFileChange}
         onClearAudio={resetRecording}
+        isOpen={cardFormOpen}
+        onToggleOpen={() => setCardFormOpen((open) => !open)}
       />
 
       <section className="gallery">

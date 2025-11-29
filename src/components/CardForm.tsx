@@ -25,6 +25,8 @@ type CardFormProps = {
   onStopRecording: () => void;
   onAudioFileChange: (files: FileList | null) => void;
   onClearAudio: () => void;
+  isOpen: boolean;
+  onToggleOpen: () => void;
 };
 
 export function CardForm({
@@ -51,20 +53,35 @@ export function CardForm({
   onStopRecording,
   onAudioFileChange,
   onClearAudio,
+  isOpen,
+  onToggleOpen,
 }: CardFormProps) {
   return (
     <section className="card-maker">
       <div className="card-maker__panel">
-        <h2>{editingId ? 'Edit your flashcard' : 'Make a new flashcard'}</h2>
-        <p className="form-hint">
-          {editingId ? 'Update the details and save changes.' : 'Give it a name and pick a picture.'}
-        </p>
-        <form ref={formRef} onSubmit={onSubmit} className="card-form">
-          <label className="field">
-            <span>Card name</span>
-            <input
-              type="text"
-              name="name"
+        <div className="card-maker__header">
+          <div>
+            <h2>{editingId ? 'Edit your flashcard' : 'Make a new flashcard'}</h2>
+            {isOpen && (
+              <p className="form-hint">
+                {editingId ? 'Update the details and save changes.' : 'Give it a name and pick a picture.'}
+              </p>
+            )}
+          </div>
+          <button type="button" className="ghost" onClick={onToggleOpen} aria-expanded={isOpen}>
+            {isOpen ? 'Hide form' : 'Show form'}
+          </button>
+        </div>
+
+        {!isOpen && <p className="small-muted">Open the form to add or edit flashcards.</p>}
+
+        {isOpen && (
+          <form ref={formRef} onSubmit={onSubmit} className="card-form">
+            <label className="field">
+              <span>Card name</span>
+              <input
+                type="text"
+                name="name"
               placeholder="e.g. Spaceship"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
@@ -163,19 +180,20 @@ export function CardForm({
             </div>
           )}
 
-          {uploadError && <p className="error">{uploadError}</p>}
+            {uploadError && <p className="error">{uploadError}</p>}
 
-          <div className="form-actions">
-            {editingId && (
-              <button type="button" className="ghost" onClick={onCancelEdit}>
+            <div className="form-actions">
+              {editingId && (
+                <button type="button" className="ghost" onClick={onCancelEdit}>
                 Cancel edit
               </button>
             )}
             <button type="submit" className="cta">
               {editingId ? 'Save changes' : 'Add card'}
-            </button>
-          </div>
-        </form>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </section>
   );
