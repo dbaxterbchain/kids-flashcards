@@ -128,6 +128,7 @@ export default function App() {
         editingId ? current.map((card) => (card.id === editingId ? payload : card)) : [payload, ...current],
       );
       resetForm();
+      setCardFormOpen(false);
     } catch (error) {
       console.error('Unable to save card', error);
       setUploadError('Unable to save card. Storage might be full or blocked.');
