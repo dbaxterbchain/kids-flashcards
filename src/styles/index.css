@@ -129,6 +129,7 @@ body {
 
 .card-maker {
   margin-top: 2.25rem;
+  scroll-margin-top: -20px;
 }
 
 .card-maker__panel {

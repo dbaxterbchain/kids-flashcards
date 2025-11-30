@@ -245,6 +245,12 @@ export default function App() {
     resetForm();
   };
 
+  useEffect(() => {
+    if (!cardFormOpen || !editingId) return;
+    const scrollTarget = formRef.current ?? (document.querySelector('.card-maker') as HTMLElement | null);
+    scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start'});
+  }, [editingId, cardFormOpen]);
+
   return (
     <div className="page">
       <Hero />
