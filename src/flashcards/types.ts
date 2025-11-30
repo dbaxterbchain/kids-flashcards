@@ -5,6 +5,7 @@ export type FlashcardData = {
   createdAt: number;
   audioUrl?: string;
   setIds?: string[];
+  backgroundColor?: string;
 };
 
 export type FlashcardSet = {

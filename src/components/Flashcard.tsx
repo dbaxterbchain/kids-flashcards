@@ -14,6 +14,7 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
   const [muted, setMuted] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const frontStyle = card.backgroundColor ? { background: card.backgroundColor } : undefined;
 
   const toggleFlip = () => setIsFlipped((current) => !current);
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -94,8 +95,8 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
         </div>
       )}
       <div className="flashcard-inner">
-        <div className="flashcard-face flashcard-front">
-          <img src={card.imageUrl} alt={card.name} loading="lazy" />
+        <div className="flashcard-face flashcard-front" style={frontStyle}>
+          {card.imageUrl && <img src={card.imageUrl} alt={card.name} loading="lazy" />}
         </div>
         <div className="flashcard-face flashcard-back">
           <p>{card.name}</p>
