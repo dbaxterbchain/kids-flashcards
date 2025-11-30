@@ -23,6 +23,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
   const [newSetName, setNewSetName] = useState('');
+  const [backgroundColor, setBackgroundColor] = useState('');
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -97,6 +98,7 @@ export default function App() {
     setUploadError(null);
     setSelectedSetIds([]);
     setNewSetName('');
+    setBackgroundColor('');
     resetRecording();
     formRef.current?.reset();
   };
@@ -107,19 +109,21 @@ export default function App() {
       setUploadError('Please give your card a fun name!');
       return;
     }
-    if (!imageData) {
-      setUploadError('Please add a picture for your flashcard.');
+    if (!imageData && !backgroundColor.trim()) {
+      setUploadError('Add a picture or pick a background color.');
       return;
     }
 
     const existingCard = editingId ? cards.find((card) => card.id === editingId) : undefined;
+    const normalizedBackground = backgroundColor.trim();
     const payload: FlashcardData = {
       id: editingId ?? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`),
       name: name.trim(),
-      imageUrl: imageData,
+      imageUrl: imageData ?? '',
       createdAt: editingId ? existingCard?.createdAt ?? Date.now() : Date.now(),
       audioUrl: audioDataUrl ?? undefined,
       setIds: selectedSetIds,
+      backgroundColor: normalizedBackground || undefined,
     };
 
     try {
@@ -215,6 +219,7 @@ export default function App() {
     setImageData(card.imageUrl);
     setAudioDataUrl(card.audioUrl ?? null);
     setSelectedSetIds(card.setIds ?? []);
+    setBackgroundColor(card.backgroundColor ?? '');
     setUploadError(null);
   };
 
@@ -270,6 +275,8 @@ export default function App() {
         onClearAudio={resetRecording}
         isOpen={cardFormOpen}
         onToggleOpen={() => setCardFormOpen((open) => !open)}
+        backgroundColor={backgroundColor}
+        onBackgroundColorChange={setBackgroundColor}
       />
 
       <section className="gallery">

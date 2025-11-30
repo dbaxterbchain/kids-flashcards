@@ -27,6 +27,8 @@ type CardFormProps = {
   onClearAudio: () => void;
   isOpen: boolean;
   onToggleOpen: () => void;
+  backgroundColor: string;
+  onBackgroundColorChange: (value: string) => void;
 };
 
 export function CardForm({
@@ -55,6 +57,8 @@ export function CardForm({
   onClearAudio,
   isOpen,
   onToggleOpen,
+  backgroundColor,
+  onBackgroundColorChange,
 }: CardFormProps) {
   return (
     <section className="card-maker">
@@ -97,6 +101,29 @@ export function CardForm({
               accept="image/*"
               onChange={(event) => onImageFileChange(event.target.files)}
             />
+          </label>
+
+          <label className="field">
+            <span>Background color (optional)</span>
+            <div className="color-picker">
+              <input
+                type="color"
+                className="color-picker__swatch"
+                aria-label="Pick a background color"
+                value={backgroundColor || '#ffffff'}
+                onChange={(event) => onBackgroundColorChange(event.target.value)}
+              />
+              <input
+                type="text"
+                value={backgroundColor}
+                onChange={(event) => onBackgroundColorChange(event.target.value)}
+                placeholder="#f97316"
+                aria-label="Background color hex code"
+              />
+              <button type="button" className="ghost" onClick={() => onBackgroundColorChange('')}>
+                Clear
+              </button>
+            </div>
           </label>
 
           <div className="sets-card">
@@ -171,11 +198,15 @@ export function CardForm({
             {recordingError && <p className="error">{recordingError}</p>}
           </div>
 
-          {imageData && (
+          {(imageData || backgroundColor) && (
             <div className="preview">
               <p>Preview</p>
-              <div className="preview-card">
-                <img src={imageData} alt="Uploaded preview" />
+              <div className="preview-card" style={backgroundColor ? { background: backgroundColor } : undefined}>
+                {imageData ? (
+                  <img src={imageData} alt="Uploaded preview" />
+                ) : (
+                  <div className="color-preview" aria-label="Background color preview" />
+                )}
               </div>
             </div>
           )}
