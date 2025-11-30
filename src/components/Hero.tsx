@@ -11,6 +11,7 @@ export function Hero() {
         <ul className="feature-list">
           <li>Flip animations on every card</li>
           <li>Custom pictures from your device</li>
+          <li>Custom audio on cards</li>
           <li>Save cards locally for quick reuse</li>
           <li>Brought to you for free by <a href='https://bchain.coffee' target='_blank'>Beanchain Coffee</a></li>
         </ul>
