@@ -77,6 +77,7 @@ function buildShapeCards(baseTimestamp: number): FlashcardData[] {
     imageUrl: buildIllustratedCard(shape.build(palette[index % palette.length], stroke), shape.height ? shape.height : 0),
     createdAt: baseTimestamp + 400 + index,
     setIds: ['shapes'],
+    backgroundColor: "#fff"
   }));
 }
 
