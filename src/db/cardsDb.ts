@@ -1,6 +1,6 @@
 import { FlashcardData, FlashcardSet } from '../flashcards/types';
 
-const DB_NAME = 'kids-flashcards-db';
+const DB_NAME = 'kids-flashcards-db-v2';
 const STORE_NAME = 'cards';
 const SET_STORE = 'sets';
 const DB_VERSION = 2;
