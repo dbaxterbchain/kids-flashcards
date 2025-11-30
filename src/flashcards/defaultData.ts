@@ -1,22 +1,10 @@
 import { FlashcardData, FlashcardSet } from './types';
 
 export const defaultSets: FlashcardSet[] = [
-  // { id: 'alphabet', name: 'Alphabet' },
   { id: 'numbers', name: 'Numbers 0-10' },
   { id: 'shapes', name: 'Shapes' },
   { id: 'colors', name: 'Colors' },
 ];
-
-// function buildAlphabetCards(): FlashcardData[] {
-//   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-//   return letters.map((letter, index) => ({
-//     id: `alphabet-${letter.toLowerCase()}`,
-//     name: letter,
-//     imageUrl: buildSvgCard(letter, '#7de0d5', '#7d7aff'),
-//     createdAt: Date.now() + 100 + index,
-//     setIds: ['alphabet'],
-//   }));
-// }
 
 const numberNameInEnglish = (numberToConvert: number) => {
   const numbersToWords: { [key: number]: string } = {
@@ -112,7 +100,6 @@ function buildColorCards(baseTimestamp: number): FlashcardData[] {
 }
 
 export const defaultCards: FlashcardData[] = [
-  // ...buildAlphabetCards(),
   ...buildNumberCards(timestampSeed),
   ...buildShapeCards(timestampSeed),
   ...buildColorCards(timestampSeed),
