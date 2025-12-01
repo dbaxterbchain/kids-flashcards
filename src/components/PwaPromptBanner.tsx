@@ -33,16 +33,6 @@ export function PwaPromptBanner({
         </div>
       )}
 
-      <div className="pwa-banner__card">
-          <div>
-            <p className="pwa-banner__title">New version ready</p>
-            <p className="pwa-banner__text">Reload to get the latest styles and fixes.</p>
-          </div>
-          <button className="cta small" type="button" onClick={onUpdate}>
-            Refresh
-          </button>
-        </div>
-
       {offlineReady && (
         <div className="pwa-banner__card success">
           <div>
@@ -54,16 +44,6 @@ export function PwaPromptBanner({
           </button>
         </div>
       )}
-
-      <div className="pwa-banner__card success">
-          <div>
-            <p className="pwa-banner__title">Ready to use offline</p>
-            <p className="pwa-banner__text">Your cards and shell are cached locally.</p>
-          </div>
-          <button className="ghost light" type="button" onClick={onDismissOfflineReady}>
-            Dismiss
-          </button>
-        </div>
 
       {isOffline && (
         <div className="pwa-banner__card warn">
