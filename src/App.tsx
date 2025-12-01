@@ -3,12 +3,14 @@ import { CardForm } from './components/CardForm';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
 import { Hero } from './components/Hero';
+import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { deleteCard, putCard, putSet } from './db/cardsDb';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { fileToDataUrl, slugifySetName } from './flashcards/fileUtils';
 import { loadCardsAndSets } from './flashcards/storage';
 import { FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS } from './flashcards/types';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
+import { usePwa } from './hooks/usePwa';
 
 export default function App() {
   const [cards, setCards] = useState<FlashcardData[]>([]);
@@ -38,6 +40,9 @@ export default function App() {
     stopRecording,
     resetRecording,
   } = useAudioRecorder(MAX_AUDIO_SECONDS);
+
+  const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
+    usePwa();
 
   useEffect(() => {
     let cancelled = false;
@@ -253,6 +258,15 @@ export default function App() {
 
   return (
     <div className="page">
+      <PwaPromptBanner
+        canInstall={canInstall}
+        onInstall={promptInstall}
+        updateAvailable={updateAvailable}
+        onUpdate={reloadForUpdate}
+        offlineReady={offlineReady}
+        onDismissOfflineReady={dismissOfflineReady}
+        isOffline={isOffline}
+      />
       <Hero />
 
       <CardForm
