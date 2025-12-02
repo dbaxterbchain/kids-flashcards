@@ -39,7 +39,7 @@ export function PwaPromptBanner({
             <p className="pwa-banner__title">Ready to use offline</p>
             <p className="pwa-banner__text">Your cards and shell are cached locally.</p>
           </div>
-          <button className="ghost" type="button" onClick={onDismissOfflineReady}>
+          <button className="ghost light" type="button" onClick={onDismissOfflineReady}>
             Dismiss
           </button>
         </div>
