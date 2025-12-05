@@ -1,5 +1,5 @@
-import AddIcon from '@mui/icons-material/Add';
-import { Box, Container, Fab, Stack, Typography } from '@mui/material';
+﻿import AddIcon from '@mui/icons-material/Add';
+import { Box, Container, Fab, Grid, Typography } from '@mui/material';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm } from './components/CardForm';
 import { FlashcardGrid } from './components/FlashcardGrid';
@@ -269,26 +269,30 @@ export default function App() {
         <Hero />
 
         <section className="gallery">
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ sm: 'center' }}
+          <Grid
+            container
             spacing={1.5}
+            justifyItems={{ xs: "space-between" }}
+            alignItems={{ sm: 'center' }}
             className="gallery__header"
           >
-            <div>
+            <Grid size={{xs: 10, sm: 4}}>
               <p className="tag">Flip & learn</p>
               <Typography variant="h4" component="h2">
                 Flashcard gallery
               </Typography>
-            </div>
-            <Typography className="gallery__hint" sx={{ textAlign: 'center', flexGrow: 1 }}>
-              Click any card to flip it around.
-            </Typography>
-            <Fab color="primary" aria-label="Add new flashcard" onClick={openCreateForm} size="medium">
-              <AddIcon />
-            </Fab>
-          </Stack>
+            </Grid>
+            <Grid order={{ xs: 3, sm: 2}} size={{xs: 12, sm: 4}}>
+              <Typography className="gallery__hint" sx={{ textAlign: 'center', flexGrow: 1 }}>
+                Click any card to flip it around.
+              </Typography>
+            </Grid>
+            <Grid order={{ xs: 2, sm: 3}} size={{xs: 2, sm: 4}} sx={{ display: 'flex', justifyContent: 'flex-end'}}>
+              <Fab color="primary" aria-label="Add new flashcard" onClick={openCreateForm} size="medium">
+                <AddIcon />
+              </Fab>
+            </Grid>
+          </Grid>
 
           <GalleryControls
             availableSets={availableSets}
