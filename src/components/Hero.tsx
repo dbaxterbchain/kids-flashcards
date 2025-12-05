@@ -19,7 +19,7 @@ export function Hero() {
       sx={{
         position: 'relative',
         overflow: 'hidden',
-        p: open ? { xs: 2.5, sm: 3 } : { xs: 1.5, sm: 2 },
+        p: { xs: 1.5, sm: 2 },
         borderRadius: 3,
         background: 'linear-gradient(140deg, rgba(125, 224, 213, 0.35), rgba(255, 126, 182, 0.25))',
         border: '1px solid rgba(15, 23, 42, 0.05)',
@@ -27,9 +27,9 @@ export function Hero() {
         marginBottom: 3,
       }}
     >
-      <Grid container spacing={open ? 3 : 1.5} alignItems={open ? 'center' : 'flex-start'}>
+      <Grid container spacing={1.5} alignItems={open ? 'center' : 'flex-start'}>
         <Grid size={{ xs: 11, md: open ? 7 : 11 }}>
-          <Stack spacing={open ? 1.5 : 0.5} zIndex={1} sx={{ width: '100%'}}>
+          <Stack spacing={0.5} zIndex={1} sx={{ width: '100%'}}>
             <Chip
               label="Spark curiosity"
               sx={{
@@ -142,7 +142,7 @@ export function Hero() {
           </Grid>
         )}
 
-        <Grid size={{ xs: 1, md: open ? 1 : 1 }} order={{ xs: 2, md: 2}} alignSelf={'flex-start'} justifySelf={'flex-end'} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+        <Grid size={{ xs: 1, md: 1 }} order={{ xs: 2, md: 2}} alignSelf={'flex-start'} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
           <IconButton
             size="small"
             aria-label={open ? 'Collapse hero' : 'Expand hero'}
