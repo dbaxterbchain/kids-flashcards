@@ -1,3 +1,4 @@
+import { Box } from '@mui/material';
 import { FlashcardData } from '../flashcards/types';
 import { Flashcard } from './Flashcard';
 
@@ -10,7 +11,13 @@ type FlashcardGridProps = {
 
 export function FlashcardGrid({ cards, showActions, onEdit, onDelete }: FlashcardGridProps) {
   return (
-    <div className="grid">
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 2.5,
+        gridTemplateColumns: { xs: 'repeat(auto-fill, minmax(240px, 1fr))', sm: 'repeat(auto-fill, minmax(260px, 1fr))' },
+      }}
+    >
       {cards.map((card) => (
         <Flashcard
           key={card.id}
@@ -20,6 +27,6 @@ export function FlashcardGrid({ cards, showActions, onEdit, onDelete }: Flashcar
           onDelete={() => onDelete(card.id)}
         />
       ))}
-    </div>
+    </Box>
   );
 }

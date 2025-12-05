@@ -1,4 +1,18 @@
 import { FormEvent, RefObject } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { MAX_AUDIO_SECONDS, FlashcardSet } from '../flashcards/types';
 
 type CardFormProps = {
@@ -25,8 +39,8 @@ type CardFormProps = {
   onStopRecording: () => void;
   onAudioFileChange: (files: FileList | null) => void;
   onClearAudio: () => void;
-  isOpen: boolean;
-  onToggleOpen: () => void;
+  open: boolean;
+  onClose: () => void;
   backgroundColor: string;
   onBackgroundColorChange: (value: string) => void;
 };
@@ -55,177 +69,229 @@ export function CardForm({
   onStopRecording,
   onAudioFileChange,
   onClearAudio,
-  isOpen,
-  onToggleOpen,
+  open,
+  onClose,
   backgroundColor,
   onBackgroundColorChange,
 }: CardFormProps) {
+  const title = editingId ? 'Edit your flashcard' : 'Add a new flashcard';
+
   return (
-    <section className="card-maker">
-      <div className="card-maker__panel">
-        <div className="card-maker__header">
-          <div>
-            <h2>{editingId ? 'Edit your flashcard' : 'Make a new flashcard'}</h2>
-            {isOpen && (
-              <p className="form-hint">
-                {editingId ? 'Update the details and save changes.' : 'Give it a name and pick a picture.'}
-              </p>
-            )}
-          </div>
-          <button type="button" className="ghost" onClick={onToggleOpen} aria-expanded={isOpen}>
-            {isOpen ? 'Hide form' : 'Show form'}
-          </button>
-        </div>
-
-        {!isOpen && <p className="small-muted">Open the form to add or edit flashcards.</p>}
-
-        {isOpen && (
-          <form ref={formRef} onSubmit={onSubmit} className="card-form">
-            <label className="field">
-              <span>Card name</span>
-              <input
-                type="text"
-                name="name"
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <form ref={formRef} onSubmit={onSubmit}>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={3}>
+            <TextField
+              label="Card name"
+              name="name"
               placeholder="e.g. Spaceship"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
               required
+              fullWidth
             />
-          </label>
 
-          <label className="field">
-            <span>Picture</span>
-            <input
-              type="file"
-              name="image"
-              accept="image/*"
-              onChange={(event) => onImageFileChange(event.target.files)}
-            />
-          </label>
-
-          <label className="field">
-            <span>Background color (optional)</span>
-            <div className="color-picker">
-              <input
-                type="color"
-                className="color-picker__swatch"
-                aria-label="Pick a background color"
-                value={backgroundColor || '#ffffff'}
-                onChange={(event) => onBackgroundColorChange(event.target.value)}
-              />
-              <input
-                type="text"
-                value={backgroundColor}
-                onChange={(event) => onBackgroundColorChange(event.target.value)}
-                placeholder="#f97316"
-                aria-label="Background color hex code"
-              />
-              <button type="button" className="ghost" onClick={() => onBackgroundColorChange('')}>
-                Clear
-              </button>
-            </div>
-          </label>
-
-          <div className="sets-card">
-            <div className="sets-card__header">
-              <span>Sets</span>
-              <p className="sets-card__hint">Group cards into sets to show or hide them together.</p>
-            </div>
-            <div className="sets-list">
-              {sets.map((set) => (
-                <label key={set.id} className="toggle">
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Picture</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+                <Button variant="outlined" component="label">
+                  Upload image
                   <input
-                    type="checkbox"
-                    checked={selectedSetIds.includes(set.id)}
-                    onChange={() => onToggleSet(set.id)}
+                    type="file"
+                    hidden
+                    name="image"
+                    accept="image/*"
+                    onChange={(event) => onImageFileChange(event.target.files)}
                   />
-                  <span>{set.name}</span>
-                </label>
-              ))}
-              {sets.length === 0 && <p className="small-muted">No sets yet. Add one below.</p>}
-            </div>
-            <div className="add-set">
-              <input
-                type="text"
-                value={newSetName}
-                onChange={(event) => onSetNameChange(event.target.value)}
-                placeholder="New set name (e.g. Animals)"
-              />
-              <button type="button" className="ghost" onClick={onAddSet}>
-                Add set
-              </button>
-            </div>
-          </div>
-
-          <div className="audio-card">
-            <div className="audio-card__header">
-              <span>Optional audio (plays on flip)</span>
-              <p className="audio-card__hint">
-                Record or upload a short sound, up to {MAX_AUDIO_SECONDS} seconds.
-              </p>
-            </div>
-            <div className="audio-actions-row">
-              <button
-                type="button"
-                className={`ghost ${isRecording ? 'recording' : ''}`}
-                onClick={isRecording ? onStopRecording : onStartRecording}
-              >
-                {isRecording
-                  ? `Stop recording (${recordingSeconds}s / ${MAX_AUDIO_SECONDS}s)`
-                  : 'Record audio'}
-              </button>
-              <span className="audio-timer">
-                {recordingSeconds}s / {MAX_AUDIO_SECONDS}s
-              </span>
-            </div>
-            <label className="field file-inline">
-              <span>Upload audio (optional)</span>
-              <input
-                type="file"
-                name="audio"
-                accept="audio/*"
-                onChange={(event) => onAudioFileChange(event.target.files)}
-              />
-            </label>
-            {audioDataUrl && (
-              <div className="preview-audio">
-                <audio controls src={audioDataUrl} />
-                <button type="button" className="ghost" onClick={onClearAudio}>
-                  Remove audio
-                </button>
-              </div>
-            )}
-            {recordingError && <p className="error">{recordingError}</p>}
-          </div>
-
-          {(imageData || backgroundColor) && (
-            <div className="preview">
-              <p>Preview</p>
-              <div className="preview-card" style={backgroundColor ? { background: backgroundColor } : undefined}>
-                {imageData ? (
-                  <img src={imageData} alt="Uploaded preview" />
-                ) : (
-                  <div className="color-preview" aria-label="Background color preview" />
+                </Button>
+                {imageData && (
+                  <Typography variant="body2" color="text.secondary">
+                    Image selected
+                  </Typography>
                 )}
-              </div>
-            </div>
-          )}
+              </Stack>
+            </Stack>
 
-            {uploadError && <p className="error">{uploadError}</p>}
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Background color (optional)</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+                <Box
+                  component="input"
+                  type="color"
+                  aria-label="Pick a background color"
+                  value={backgroundColor || '#ffffff'}
+                  onChange={(event) => onBackgroundColorChange(event.target.value)}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    p: 0,
+                  }}
+                />
+                <TextField
+                  label="Hex code"
+                  placeholder="#f97316"
+                  value={backgroundColor}
+                  onChange={(event) => onBackgroundColorChange(event.target.value)}
+                  fullWidth
+                />
+                <Button type="button" variant="text" onClick={() => onBackgroundColorChange('')}>
+                  Clear
+                </Button>
+              </Stack>
+            </Stack>
 
-            <div className="form-actions">
-              {editingId && (
-                <button type="button" className="ghost" onClick={onCancelEdit}>
-                Cancel edit
-              </button>
+            <Stack spacing={1}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Typography variant="subtitle2">Sets</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Group cards to show or hide together.
+                </Typography>
+              </Stack>
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {sets.map((set) => {
+                  const selected = selectedSetIds.includes(set.id);
+                  return (
+                    <Chip
+                      key={set.id}
+                      label={set.name}
+                      color={selected ? 'primary' : 'default'}
+                      variant={selected ? 'filled' : 'outlined'}
+                      onClick={() => onToggleSet(set.id)}
+                    />
+                  );
+                })}
+              </Stack>
+              {sets.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  No sets yet. Add one below.
+                </Typography>
+              )}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <TextField
+                  label="New set name"
+                  placeholder="e.g. Animals"
+                  value={newSetName}
+                  onChange={(event) => onSetNameChange(event.target.value)}
+                  fullWidth
+                />
+                <Button type="button" variant="outlined" onClick={onAddSet}>
+                  Add set
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Divider />
+
+            <Stack spacing={1}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+                <Typography variant="subtitle2">Optional audio (plays on flip)</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Up to {MAX_AUDIO_SECONDS} seconds.
+                </Typography>
+              </Stack>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+                <Button
+                  type="button"
+                  variant={isRecording ? 'contained' : 'outlined'}
+                  color={isRecording ? 'error' : 'primary'}
+                  onClick={isRecording ? onStopRecording : onStartRecording}
+                >
+                  {isRecording
+                    ? `Stop recording (${recordingSeconds}s / ${MAX_AUDIO_SECONDS}s)`
+                    : 'Record audio'}
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  {recordingSeconds}s / {MAX_AUDIO_SECONDS}s
+                </Typography>
+              </Stack>
+
+              <Button variant="outlined" component="label">
+                Upload audio (optional)
+                <input
+                  type="file"
+                  hidden
+                  name="audio"
+                  accept="audio/*"
+                  onChange={(event) => onAudioFileChange(event.target.files)}
+                />
+              </Button>
+
+              {audioDataUrl && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <audio controls src={audioDataUrl} />
+                  <Button type="button" variant="text" onClick={onClearAudio}>
+                    Remove audio
+                  </Button>
+                </Stack>
+              )}
+              {recordingError && <Alert severity="error">{recordingError}</Alert>}
+            </Stack>
+
+            {(imageData || backgroundColor) && (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2">Preview</Typography>
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    overflow: 'hidden',
+                    width: 200,
+                    height: 140,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: backgroundColor || 'transparent',
+                  }}
+                >
+                  {imageData ? (
+                    <Box
+                      component="img"
+                      src={imageData}
+                      alt="Uploaded preview"
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: '40%',
+                        height: '40%',
+                        borderRadius: 1,
+                        border: '1px dashed',
+                        borderColor: 'text.secondary',
+                      }}
+                      aria-label="Background color preview"
+                    />
+                  )}
+                </Box>
+              </Stack>
             )}
-            <button type="submit" className="cta">
-              {editingId ? 'Save changes' : 'Add card'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </section>
+
+            {uploadError && <Alert severity="error">{uploadError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+            {editingId ? 'Editing existing card' : 'Creating a brand new card'}
+          </Typography>
+          {editingId && (
+            <Button type="button" onClick={onCancelEdit}>
+              Cancel edit
+            </Button>
+          )}
+          <Button type="button" onClick={onClose}>
+            Close
+          </Button>
+          <Button type="submit" variant="contained">
+            {editingId ? 'Save changes' : 'Add card'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }

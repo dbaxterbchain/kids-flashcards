@@ -1,3 +1,9 @@
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import DownloadDoneIcon from '@mui/icons-material/DownloadDone';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SignalWifiBadIcon from '@mui/icons-material/SignalWifiBad';
+import { Alert, Button, Snackbar, Stack } from '@mui/material';
+
 type Props = {
   canInstall: boolean;
   onInstall: () => Promise<void>;
@@ -17,54 +23,71 @@ export function PwaPromptBanner({
   onDismissOfflineReady,
   isOffline,
 }: Props) {
-  if (!canInstall && !updateAvailable && !offlineReady && !isOffline) return null;
+  const showAny = canInstall || updateAvailable || offlineReady || isOffline;
+  if (!showAny) return null;
 
   return (
-    <div className="pwa-banner" aria-live="polite">
+    <Stack spacing={1.25} sx={{ mb: 2 }}>
       {updateAvailable && (
-        <div className="pwa-banner__card">
-          <div>
-            <p className="pwa-banner__title">New version ready</p>
-            <p className="pwa-banner__text">Reload to get the latest styles and fixes.</p>
-          </div>
-          <button className="cta small" type="button" onClick={onUpdate}>
-            Refresh
-          </button>
-        </div>
+        <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+          <Alert
+            icon={<RefreshIcon fontSize="small" />}
+            severity="info"
+            onClose={onUpdate}
+            action={
+              <Button color="inherit" size="small" onClick={onUpdate} startIcon={<RefreshIcon />}>
+                Refresh
+              </Button>
+            }
+            sx={{ alignItems: 'center' }}
+          >
+            New version ready. Reload to get the latest styles and fixes.
+          </Alert>
+        </Snackbar>
       )}
 
       {offlineReady && (
-        <div className="pwa-banner__card success">
-          <div>
-            <p className="pwa-banner__title">Ready to use offline</p>
-            <p className="pwa-banner__text">Your cards and shell are cached locally.</p>
-          </div>
-          <button className="ghost light" type="button" onClick={onDismissOfflineReady}>
-            Dismiss
-          </button>
-        </div>
+        <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+          <Alert
+            icon={<DownloadDoneIcon fontSize="small" />}
+            severity="success"
+            onClose={onDismissOfflineReady}
+            action={
+              <Button color="inherit" size="small" onClick={onDismissOfflineReady}>
+                Dismiss
+              </Button>
+            }
+            sx={{ alignItems: 'center' }}
+          >
+            Ready to use offline. Your cards and shell are cached locally.
+          </Alert>
+        </Snackbar>
       )}
 
       {isOffline && (
-        <div className="pwa-banner__card warn">
-          <div>
-            <p className="pwa-banner__title">Offline mode</p>
-            <p className="pwa-banner__text">You can still flip saved cards. Reconnect to sync new media.</p>
-          </div>
-        </div>
+        <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+          <Alert icon={<SignalWifiBadIcon fontSize="small" />} severity="warning" sx={{ alignItems: 'center' }}>
+            Offline mode. You can still flip saved cards.
+          </Alert>
+        </Snackbar>
       )}
 
       {canInstall && (
-        <div className="pwa-banner__card">
-          <div>
-            <p className="pwa-banner__title">Install Kids Flashcards</p>
-            <p className="pwa-banner__text">Add to your home screen for a smoother, full-screen experience.</p>
-          </div>
-          <button className="cta small" type="button" onClick={onInstall}>
-            Install
-          </button>
-        </div>
+        <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+          <Alert
+            icon={<CloudDownloadIcon fontSize="small" />}
+            severity="info"
+            action={
+              <Button color="inherit" size="small" onClick={onInstall} startIcon={<CloudDownloadIcon />}>
+                Install
+              </Button>
+            }
+            sx={{ alignItems: 'center' }}
+          >
+            Install Kids Flashcards for a smoother, full-screen experience.
+          </Alert>
+        </Snackbar>
       )}
-    </div>
+    </Stack>
   );
 }

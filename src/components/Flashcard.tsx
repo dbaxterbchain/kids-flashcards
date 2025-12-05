@@ -1,3 +1,9 @@
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import MicOutlinedIcon from '@mui/icons-material/MicOutlined';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { Card, IconButton, Stack, Typography, styled } from '@mui/material';
 import { KeyboardEvent, MouseEvent, useEffect, useRef, useState } from 'react';
 import { FlashcardData } from '../flashcards/types';
 import './Flashcard.css';
@@ -61,7 +67,7 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
   };
 
   return (
-    <div
+    <StyledCard
       className={`flashcard ${isFlipped ? 'flipped' : ''}`}
       onClick={toggleFlip}
       onKeyDown={handleKey}
@@ -69,62 +75,93 @@ export function Flashcard({ card, showActions = true, onEdit, onDelete }: Flashc
       role="button"
       aria-pressed={isFlipped}
       aria-label={`Flashcard for ${card.name}`}
+      elevation={3}
     >
-      {showActions && (
-        <div className="flashcard-actions" aria-hidden={isFlipped}>
-          <button
-            type="button"
-            className="tiny-btn"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit();
-            }}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="tiny-btn danger"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
       <div className="flashcard-inner">
         <div className="flashcard-face flashcard-front" style={frontStyle}>
           {card.imageUrl && <img src={card.imageUrl} alt={card.name} loading="lazy" />}
         </div>
         <div className="flashcard-face flashcard-back">
-          <p>{card.name}</p>
+          <Typography variant="h5" component="p" sx={{ mb: 1, textAlign: 'center' }}>
+            {card.name}
+          </Typography>
           {card.audioUrl && (
-            <div className="audio-controls">
-              <button
-                type="button"
-                className="tiny-btn"
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="center"
+              justifyContent="center"
+              className="audio-controls"
+            >
+              <IconButton
+                size="small"
                 onClick={(event) => {
                   event.stopPropagation();
                   setMuted((current) => !current);
                 }}
+                aria-label={muted ? 'Unmute audio' : 'Mute audio'}
               >
-                {muted ? 'Unmute' : 'Mute'}
-              </button>
-              <button
-                type="button"
-                className="tiny-btn"
-                onClick={handleManualPlay}
-                aria-label={`Play audio for ${card.name}`}
-              >
-                Play
-              </button>
-              {playError && <span className="audio-hint">{playError}</span>}
-            </div>
+                {muted ? <MicOffIcon fontSize="small" /> : <MicOutlinedIcon fontSize="small" />}
+              </IconButton>
+              <IconButton size="small" onClick={handleManualPlay} aria-label={`Play audio for ${card.name}`}>
+                <PlayArrowIcon fontSize="small" />
+              </IconButton>
+              {playError && (
+                <Typography variant="caption" color="text.secondary" className="audio-hint">
+                  {playError}
+                </Typography>
+              )}
+            </Stack>
           )}
         </div>
       </div>
-    </div>
+
+      {showActions && (
+        <Stack
+          direction="row"
+          spacing={0.5}
+          className="flashcard-actions"
+          aria-hidden={isFlipped}
+          sx={{ position: 'absolute', top: 8, right: 8 }}
+        >
+          <IconButton
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
+            aria-label="Edit card"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            aria-label="Delete card"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      )}
+    </StyledCard>
   );
 }
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  position: 'relative',
+  height: 300,
+  background: 'transparent',
+  boxShadow: 'none',
+  overflow: 'visible',
+  perspective: 1200,
+  '.flashcard-inner': {
+    height: '100%',
+    borderRadius: 18,
+    boxShadow: theme.shadows[4],
+    background: 'transparent',
+  },
+}));

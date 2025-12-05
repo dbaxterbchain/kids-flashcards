@@ -1,4 +1,6 @@
-﻿import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import { Box, Container, Fab, Stack, Typography } from '@mui/material';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm } from './components/CardForm';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
@@ -21,7 +23,7 @@ export default function App() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(true);
-  const [cardFormOpen, setCardFormOpen] = useState(true);
+  const [cardFormOpen, setCardFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
   const [newSetName, setNewSetName] = useState('');
@@ -47,7 +49,6 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
-      // Load cards and sets from IndexedDB
       try {
         const { cards: storedCards, sets: storedSets, visibleSetIds: defaults } = await loadCardsAndSets();
         if (cancelled) return;
@@ -205,13 +206,10 @@ export default function App() {
   };
 
   const toggleVisibleSet = (setId: string) => {
-    setVisibleSetIds((current) => (current.includes(setId) 
-    ? current.filter((id) => id !== setId) 
-    : [...current, setId]));
+    setVisibleSetIds((current) => (current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId]));
   };
 
   const selectAllVisibleSets = () => {
-    console.log('Selecting all sets');
     setVisibleSetIds(availableSets.map((set) => set.id));
   };
 
@@ -248,16 +246,16 @@ export default function App() {
 
   const cancelEditing = () => {
     resetForm();
+    setCardFormOpen(false);
   };
 
-  useEffect(() => {
-    if (!cardFormOpen || !editingId) return;
-    const scrollTarget = formRef.current ?? (document.querySelector('.card-maker') as HTMLElement | null);
-    scrollTarget?.scrollIntoView({ behavior: 'smooth', block: 'start'});
-  }, [editingId, cardFormOpen]);
+  const openCreateForm = () => {
+    resetForm();
+    setCardFormOpen(true);
+  };
 
   return (
-    <div className="page">
+    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
       <PwaPromptBanner
         canInstall={canInstall}
         onInstall={promptInstall}
@@ -267,7 +265,50 @@ export default function App() {
         onDismissOfflineReady={dismissOfflineReady}
         isOffline={isOffline}
       />
-      <Hero />
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Hero />
+
+        <section className="gallery">
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ sm: 'center' }}
+            spacing={1.5}
+            className="gallery__header"
+          >
+            <div>
+              <p className="tag">Flip & learn</p>
+              <Typography variant="h4" component="h2">
+                Flashcard gallery
+              </Typography>
+            </div>
+            <Typography className="gallery__hint" sx={{ textAlign: 'center', flexGrow: 1 }}>
+              Click any card to flip it around.
+            </Typography>
+            <Fab color="primary" aria-label="Add new flashcard" onClick={openCreateForm} size="medium">
+              <AddIcon />
+            </Fab>
+          </Stack>
+
+          <GalleryControls
+            availableSets={availableSets}
+            visibleSetIds={visibleSetIds}
+            onToggleSet={toggleVisibleSet}
+            onShowAll={selectAllVisibleSets}
+            onHideAll={clearVisibleSets}
+            showActions={showActions}
+            onToggleActions={setShowActions}
+          />
+
+          {loading ? (
+            <p className="empty">Loading your saved cards.</p>
+          ) : filteredCards.length === 0 ? (
+            <p className="empty">Add a card or pick a set to get started!</p>
+          ) : (
+            <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
+        </section>
+      </Container>
 
       <CardForm
         formRef={formRef}
@@ -293,39 +334,11 @@ export default function App() {
         onStopRecording={stopRecording}
         onAudioFileChange={handleAudioFileChange}
         onClearAudio={resetRecording}
-        isOpen={cardFormOpen}
-        onToggleOpen={() => setCardFormOpen((open) => !open)}
+        open={cardFormOpen}
+        onClose={cancelEditing}
         backgroundColor={backgroundColor}
         onBackgroundColorChange={setBackgroundColor}
       />
-
-      <section className="gallery">
-        <div className="gallery__header">
-          <div>
-            <p className="tag">Flip & learn</p>
-            <h2>Flashcard gallery</h2>
-          </div>
-          <p className="gallery__hint">Click any card to flip it around.</p>
-        </div>
-
-        <GalleryControls
-          availableSets={availableSets}
-          visibleSetIds={visibleSetIds}
-          onToggleSet={toggleVisibleSet}
-          onShowAll={selectAllVisibleSets}
-          onHideAll={clearVisibleSets}
-          showActions={showActions}
-          onToggleActions={setShowActions}
-        />
-
-        {loading ? (
-          <p className="empty">Loading your saved cards.</p>
-        ) : filteredCards.length === 0 ? (
-          <p className="empty">Add a card or pick a set to get started!</p>
-        ) : (
-          <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
-        )}
-      </section>
-    </div>
+    </Box>
   );
 }
