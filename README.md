@@ -1,65 +1,64 @@
 # Kids Flashcards
 
-A playful, single-page React + TypeScript experience for creating and flipping kid-friendly flashcards. Upload your own images, give each card a name, and watch the card flip with a smooth 3D animation. Everything saves locally in the browser so you can build a custom deck for your kids in seconds.
+A kid-friendly React + TypeScript web app for building, flipping, and hearing personalized flashcards. Add your own pictures, colors, and audio, then install it as a PWA so little learners can use it offline.
 
 ## Features
-- 🎴 Interactive flip animation on every card (image on the front, name on the back).
-- 🖼️ Upload your own pictures for new cards.
-- 💾 Local storage keeps your deck available between visits.
-- 🌈 Friendly, colorful UI designed for kids and parents.
+- Create, edit, and delete cards with custom images or solid-color fronts.
+- Optional audio on each card (record in-app or upload); audio plays on flip with mute/play controls.
+- Organize cards into sets, quickly show/hide sets, and toggle edit/delete buttons for kid-safe browsing.
+- Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
+- Offline-ready PWA with install prompt; cards and sets persist locally in IndexedDB.
 
-## Getting started
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+ (Node 22 recommended)
-- npm 9+ (or pnpm/yarn if you prefer)
+- Node.js 18+ (Node 22 works great)
+- npm 9+ (pnpm/yarn also fine if you prefer)
 
-### Installation
+### Install
 ```bash
-# install dependencies
 npm install
 ```
 
-> If you are behind a proxy, ensure your npm/yarn/pnpm proxy settings are configured.
-
-### Development server
+### Run locally
 ```bash
 npm run dev
 ```
-The Vite dev server will start (default: http://localhost:5173). The app supports hot reloading for quick iteration.
+The Vite dev server starts at `http://localhost:5173` with hot reload.
 
-### Production build
+### Build and preview
 ```bash
 npm run build
-npm run preview  # optional: preview the production bundle
+npm run preview
 ```
 
-## Project structure
-```
-.
-├─ index.html             # Vite entry point
-├─ src/
-│  ├─ App.tsx             # Page layout and flashcard logic
-│  ├─ main.tsx            # React entry
-│  ├─ components/
-│  │  ├─ Flashcard.tsx    # Flip-enabled card component
-│  │  └─ Flashcard.css    # Styles for the card flip effect
-│  ├─ hooks/
-│  │  └─ useLocalStorage.ts # Small helper hook for persistence
-│  └─ styles/
-│     └─ index.css        # Global theme and layout styling
-├─ tsconfig*.json         # TypeScript settings
-└─ vite.config.ts         # Vite configuration
+### Lint
+```bash
+npm run lint
 ```
 
 ## Usage
 1. Start the dev server and open the app.
-2. Use the **Card name** field to set the back of the card.
-3. Upload an image from your device to use as the card front.
-4. Click **Add card** to drop it into the gallery. Click any card to flip it over.
+2. Click the floating add button to open the card form.
+3. Enter a card name, upload an image or pick a background color, and optionally record/upload audio (up to 10s).
+4. Add the card to one or more sets, or create a new set on the fly.
+5. Flip cards by clicking or pressing Space/Enter; use the gallery controls to show/hide sets and toggle action buttons.
 
-## Accessibility & notes
-- Cards are keyboard-focusable buttons with `aria-label`s for screen readers.
-- Local storage is used purely for your deck data; clearing site data will reset to the starter cards.
+## Project Structure
+```
+src/
+  App.tsx
+  components/       // Hero, card form, grid, controls, PWA prompts
+  db/               // IndexedDB helpers for cards/sets
+  flashcards/       // Types, storage, defaults, file helpers
+  hooks/            // Audio recorder, PWA hooks
+  styles/           // Global styles
+public/
+  manifest.webmanifest, icons, assets
+```
 
-Enjoy teaching and exploring new concepts with your kids! 🎉
+## PWA & Storage Notes
+- The app registers a service worker (via `vite-plugin-pwa`) so you can install it and use cached cards offline.
+- Cards and sets are stored locally in IndexedDB; clearing site data will reset to the starter deck.
+
+Enjoy helping kids learn with custom, colorful flashcards!
