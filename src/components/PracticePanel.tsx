@@ -150,7 +150,14 @@ export function PracticePanel({
                   )}
                   </Box>
                 </Box>
-                <Stack direction="row" spacing={1.5} justifyContent="center" flexWrap="wrap" sx={{ width: '100%' }}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+                    gap: 1.5,
+                  }}
+                >
                   {options.map((option) => {
                     const isCorrect = option.id === card.id;
                     const isSelected = selectedOptionId === option.id;
@@ -164,7 +171,8 @@ export function PracticePanel({
                         onClick={() => onSelectOption(option.id)}
                         disabled={locked}
                         sx={{
-                          minWidth: 160,
+                          width: '100%',
+                          minWidth: 0,
                           px: 2,
                           py: 1,
                           fontSize: '1rem',
@@ -203,7 +211,7 @@ export function PracticePanel({
                       </Button>
                     );
                   })}
-                </Stack>
+                </Box>
                 <Typography variant="caption" color="text.secondary" textAlign="center">
                   Tap an option. We will flip the card, show feedback, then move on.
                 </Typography>
