@@ -27,18 +27,35 @@ const formatDistance = (ms: number) => {
   return `${days} day${days === 1 ? '' : 's'}`;
 };
 
-const buildOptions = (correctCard: FlashcardData, pool: FlashcardData[], count: number) => {
+const hashString = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+};
+
+const createSeededRng = (seed: number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+};
+
+const buildOptions = (correctCard: FlashcardData, pool: FlashcardData[], count: number, seed: number) => {
+  const rng = createSeededRng(seed);
   const unique = new Map<string, FlashcardData>();
   unique.set(correctCard.id, correctCard);
   const candidates = pool.filter((card) => card.id !== correctCard.id);
   while (unique.size < Math.min(count, pool.length) && candidates.length > 0) {
-    const index = Math.floor(Math.random() * candidates.length);
+    const index = Math.floor(rng() * candidates.length);
     const [picked] = candidates.splice(index, 1);
     if (picked) unique.set(picked.id, picked);
   }
   const options = Array.from(unique.values());
   for (let i = options.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [options[i], options[j]] = [options[j], options[i]];
   }
   return options;
@@ -81,12 +98,12 @@ export default function App() {
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [practiceSessionIds, setPracticeSessionIds] = useState<string[]>([]);
+  const [practiceSessionSeed, setPracticeSessionSeed] = useState(0);
   const [practicePromptMode, setPracticePromptMode] = useState<'image' | 'word' | 'alternate'>('alternate');
   const [practiceReveal, setPracticeReveal] = useState(false);
   const [practiceFeedback, setPracticeFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [practiceSelectedId, setPracticeSelectedId] = useState<string | null>(null);
   const [practiceLocked, setPracticeLocked] = useState(false);
-  const [practiceOptions, setPracticeOptions] = useState<FlashcardData[]>([]);
   const [practiceSetDialogOpen, setPracticeSetDialogOpen] = useState(false);
   const [practiceSetIds, setPracticeSetIds] = useState<string[]>([]);
   const [practiceSetError, setPracticeSetError] = useState<string | null>(null);
@@ -198,7 +215,17 @@ export default function App() {
     return practicePromptMode;
   }, [practicePromptMode, practiceIndex]);
   const practiceFlipped = practicePromptSide === 'word' ? !practiceReveal : practiceReveal;
+  const practiceOptions = useMemo(() => {
+    if (!practiceMode || !practiceCard) return [];
+    const pool = practiceCards.length > 0 ? practiceCards : practiceQueue;
+    const seedBase = practiceSessionSeed || 1;
+    const promptOffset = practicePromptSide === 'word' ? 17 : 0;
+    const seed = seedBase + hashString(practiceCard.id) + promptOffset;
+    return buildOptions(practiceCard, pool, 4, seed);
+  }, [practiceMode, practiceCard, practicePromptSide, practiceQueue, practiceCards, practiceSessionSeed]);
   const progressLabel = practiceSessionCards.length > 0 ? `${practiceIndex + 1} / ${practiceSessionCards.length}` : null;
+  const progressValue =
+    practiceSessionCards.length > 0 ? ((practiceIndex + 1) / practiceSessionCards.length) * 100 : null;
   const nextDueLabel = useMemo(() => {
     if (practicePlan.hasDue || !practicePlan.nextReviewAt) return null;
     return formatDistance(practicePlan.nextReviewAt - Date.now());
@@ -212,17 +239,12 @@ export default function App() {
   }, [practiceMode, practiceIndex, practiceSessionCards.length]);
 
   useEffect(() => {
-    if (!practiceMode || !practiceCard) {
-      setPracticeOptions([]);
-      return;
-    }
-    const pool = practiceSessionCards.length > 0 ? practiceSessionCards : practiceQueue;
-    setPracticeOptions(buildOptions(practiceCard, pool, 4));
+    if (!practiceMode) return;
     setPracticeReveal(false);
     setPracticeFeedback(null);
     setPracticeSelectedId(null);
     setPracticeLocked(false);
-  }, [practiceMode, practiceCard, practicePromptSide, practiceQueue, practiceSessionCards]);
+  }, [practiceMode, practiceCard?.id, practicePromptSide]);
 
   useEffect(() => {
     if (!practiceFeedback) return;
@@ -406,6 +428,7 @@ export default function App() {
   const startPractice = () => {
     const queue = buildPracticeQueue(practiceCards).queue;
     setPracticeSessionIds(shuffleIds(queue.map((card) => card.id)));
+    setPracticeSessionSeed(Date.now());
     setPracticeIndex(0);
     setPracticeError(null);
     setPracticeReveal(false);
@@ -420,6 +443,7 @@ export default function App() {
     setPracticeIndex(0);
     setPracticeError(null);
     setPracticeSessionIds([]);
+    setPracticeSessionSeed(0);
     setPracticeReveal(false);
     setPracticeFeedback(null);
     setPracticeSelectedId(null);
@@ -525,6 +549,7 @@ export default function App() {
             feedback={practiceFeedback}
             canStart={availableSets.length > 0}
             selectedSetLabel={practiceSetLabel}
+            progressValue={progressValue}
             onStart={openPracticeSetDialog}
             onExit={exitPractice}
             onSelectOption={handlePracticeSelect}

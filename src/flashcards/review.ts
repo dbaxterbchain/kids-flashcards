@@ -72,6 +72,7 @@ export type PracticeQueue = {
 export function buildPracticeQueue(cards: FlashcardData[], now: number = Date.now()): PracticeQueue {
   const normalized = cards.map((card) => ensureReview(card, now));
   const due = normalized.filter((card) => (card.review?.nextReviewAt ?? now) <= now);
+  const upcoming = normalized.filter((card) => (card.review?.nextReviewAt ?? now) > now);
 
   const sortByPriority = (a: FlashcardData, b: FlashcardData) => {
     const aMissed = a.review?.lastCorrect === false || (a.review?.lastCorrect == null && (a.review?.lastScore ?? 5) <= 2);
@@ -86,8 +87,11 @@ export function buildPracticeQueue(cards: FlashcardData[], now: number = Date.no
   const sorted = [...normalized].sort(sortByPriority);
 
   if (due.length > 0) {
-    const queue = [...due].sort(sortByPriority);
-    return { queue, hasDue: true, dueCount: due.length };
+    const dueQueue = [...due].sort(sortByPriority);
+    const upcomingQueue = [...upcoming].sort(
+      (a, b) => (a.review?.nextReviewAt ?? now) - (b.review?.nextReviewAt ?? now),
+    );
+    return { queue: [...dueQueue, ...upcomingQueue], hasDue: true, dueCount: due.length };
   }
 
   return { queue: sorted, hasDue: false, dueCount: 0, nextReviewAt: sorted[0]?.review?.nextReviewAt };

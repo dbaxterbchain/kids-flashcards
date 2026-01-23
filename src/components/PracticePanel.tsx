@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Box, Button, Chip, LinearProgress, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { FlashcardData } from '../flashcards/types';
 import { Flashcard } from './Flashcard';
 import './PracticePanel.css';
@@ -20,6 +20,7 @@ type PracticePanelProps = {
   feedback: 'correct' | 'incorrect' | null;
   canStart: boolean;
   selectedSetLabel?: string | null;
+  progressValue?: number | null;
   onStart: () => void;
   onExit: () => void;
   onSelectOption: (id: string) => void;
@@ -44,6 +45,7 @@ export function PracticePanel({
   feedback,
   canStart,
   selectedSetLabel,
+  progressValue,
   onStart,
   onExit,
   onSelectOption,
@@ -92,6 +94,13 @@ export function PracticePanel({
           <>
             {!hasDue && totalCount > 0 && (
               <Chip label="No cards due — showing upcoming cards" color="info" variant="outlined" />
+            )}
+            {progressValue != null && (
+              <LinearProgress
+                variant="determinate"
+                value={progressValue}
+                sx={{ height: 8, borderRadius: 999, bgcolor: 'action.hover' }}
+              />
             )}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
               <Typography variant="body2" color="text.secondary">
