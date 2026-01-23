@@ -1,5 +1,6 @@
 import { getAllCards, getAllSets, putCards, putSets } from '../db/cardsDb';
 import { defaultCards, defaultSets } from './defaultData';
+import { ensureReview } from './review';
 import { FlashcardData, FlashcardSet } from './types';
 
 export type LoadResult = {
@@ -9,7 +10,7 @@ export type LoadResult = {
 };
 
 function normalizeCards(cards: FlashcardData[]): FlashcardData[] {
-  return cards.map((card) => ({ ...card, setIds: card.setIds ?? [] }));
+  return cards.map((card) => ensureReview({ ...card, setIds: card.setIds ?? [] }));
 }
 
 function hasUncategorized(cards: FlashcardData[]) {

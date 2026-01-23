@@ -5,14 +5,63 @@ import { CardForm } from './components/CardForm';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
 import { Hero } from './components/Hero';
+import { PracticePanel } from './components/PracticePanel';
+import { PracticeSetDialog } from './components/PracticeSetDialog';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { deleteCard, putCard, putSet } from './db/cardsDb';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { fileToDataUrl, slugifySetName } from './flashcards/fileUtils';
+import { applyReviewResult, buildPracticeQueue, createInitialReview } from './flashcards/review';
 import { loadCardsAndSets } from './flashcards/storage';
 import { FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS } from './flashcards/types';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { usePwa } from './hooks/usePwa';
+
+const formatDistance = (ms: number) => {
+  if (ms <= 0) return 'now';
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'}`;
+};
+
+const buildOptions = (correctCard: FlashcardData, pool: FlashcardData[], count: number) => {
+  const unique = new Map<string, FlashcardData>();
+  unique.set(correctCard.id, correctCard);
+  const candidates = pool.filter((card) => card.id !== correctCard.id);
+  while (unique.size < Math.min(count, pool.length) && candidates.length > 0) {
+    const index = Math.floor(Math.random() * candidates.length);
+    const [picked] = candidates.splice(index, 1);
+    if (picked) unique.set(picked.id, picked);
+  }
+  const options = Array.from(unique.values());
+  for (let i = options.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return options;
+};
+
+const filterCardsForPractice = (cards: FlashcardData[], selectedSetIds: string[]) => {
+  if (selectedSetIds.length === 0) return [];
+  const includeUncategorized = selectedSetIds.includes('uncategorized');
+  return cards.filter((card) => {
+    const setIds = card.setIds ?? [];
+    if (setIds.length === 0) return includeUncategorized;
+    return setIds.some((setId) => selectedSetIds.includes(setId));
+  });
+};
+
+const shuffleIds = (ids: string[]) => {
+  const shuffled = [...ids];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 export default function App() {
   const [cards, setCards] = useState<FlashcardData[]>([]);
@@ -28,6 +77,19 @@ export default function App() {
   const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
   const [newSetName, setNewSetName] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('');
+  const [practiceMode, setPracticeMode] = useState(false);
+  const [practiceIndex, setPracticeIndex] = useState(0);
+  const [practiceError, setPracticeError] = useState<string | null>(null);
+  const [practiceSessionIds, setPracticeSessionIds] = useState<string[]>([]);
+  const [practicePromptMode, setPracticePromptMode] = useState<'image' | 'word' | 'alternate'>('alternate');
+  const [practiceReveal, setPracticeReveal] = useState(false);
+  const [practiceFeedback, setPracticeFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const [practiceSelectedId, setPracticeSelectedId] = useState<string | null>(null);
+  const [practiceLocked, setPracticeLocked] = useState(false);
+  const [practiceOptions, setPracticeOptions] = useState<FlashcardData[]>([]);
+  const [practiceSetDialogOpen, setPracticeSetDialogOpen] = useState(false);
+  const [practiceSetIds, setPracticeSetIds] = useState<string[]>([]);
+  const [practiceSetError, setPracticeSetError] = useState<string | null>(null);
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -57,6 +119,7 @@ export default function App() {
         setSets(storedSets);
         setVisibleSetIds(defaults);
       } catch (error) {
+        console.error('Unable to load saved cards', error);
         if (!cancelled) {
           setCards(defaultCards);
           setSets(defaultSets);
@@ -73,7 +136,7 @@ export default function App() {
       cancelled = true;
       resetRecording();
     };
-  }, []);
+  }, [resetRecording]);
 
   const availableSets = useMemo(() => {
     const base = [...sets];
@@ -83,6 +146,17 @@ export default function App() {
     }
     return base;
   }, [sets, cards]);
+
+  useEffect(() => {
+    setPracticeSetIds((current) => {
+      const availableIds = availableSets.map((set) => set.id);
+      if (current.length === 0) {
+        return availableIds;
+      }
+      const filtered = current.filter((id) => availableIds.includes(id));
+      return filtered.length === 0 ? availableIds : filtered;
+    });
+  }, [availableSets]);
 
   const filteredCards = useMemo(() => {
     if (visibleSetIds.length === 0) return [];
@@ -96,6 +170,75 @@ export default function App() {
       return cardSets.some((id) => visibleSetIds.includes(id));
     });
   }, [cards, visibleSetIds]);
+
+  const practiceCards = useMemo(() => filterCardsForPractice(cards, practiceSetIds), [cards, practiceSetIds]);
+  const practiceSetLabel = useMemo(() => {
+    if (practiceSetIds.length === 0) return null;
+    const names = availableSets
+      .filter((set) => practiceSetIds.includes(set.id))
+      .map((set) => set.name);
+    if (names.length === 0) return null;
+    if (names.length <= 3) return names.join(', ');
+    return `${names.slice(0, 3).join(', ')} +${names.length - 3} more`;
+  }, [availableSets, practiceSetIds]);
+  const practicePlan = useMemo(() => buildPracticeQueue(practiceCards), [practiceCards]);
+  const practiceQueue = practicePlan.queue;
+  const practiceSessionCards = useMemo(
+    () =>
+      practiceSessionIds
+        .map((id) => cards.find((card) => card.id === id))
+        .filter((card): card is FlashcardData => Boolean(card)),
+    [cards, practiceSessionIds],
+  );
+  const practiceCard = practiceSessionCards[practiceIndex] ?? null;
+  const practicePromptSide = useMemo(() => {
+    if (practicePromptMode === 'alternate') {
+      return practiceIndex % 2 === 0 ? 'image' : 'word';
+    }
+    return practicePromptMode;
+  }, [practicePromptMode, practiceIndex]);
+  const practiceFlipped = practicePromptSide === 'word' ? !practiceReveal : practiceReveal;
+  const progressLabel = practiceSessionCards.length > 0 ? `${practiceIndex + 1} / ${practiceSessionCards.length}` : null;
+  const nextDueLabel = useMemo(() => {
+    if (practicePlan.hasDue || !practicePlan.nextReviewAt) return null;
+    return formatDistance(practicePlan.nextReviewAt - Date.now());
+  }, [practicePlan.hasDue, practicePlan.nextReviewAt]);
+
+  useEffect(() => {
+    if (!practiceMode) return;
+    if (practiceIndex >= practiceSessionCards.length) {
+      setPracticeIndex(0);
+    }
+  }, [practiceMode, practiceIndex, practiceSessionCards.length]);
+
+  useEffect(() => {
+    if (!practiceMode || !practiceCard) {
+      setPracticeOptions([]);
+      return;
+    }
+    const pool = practiceSessionCards.length > 0 ? practiceSessionCards : practiceQueue;
+    setPracticeOptions(buildOptions(practiceCard, pool, 4));
+    setPracticeReveal(false);
+    setPracticeFeedback(null);
+    setPracticeSelectedId(null);
+    setPracticeLocked(false);
+  }, [practiceMode, practiceCard, practicePromptSide, practiceQueue, practiceSessionCards]);
+
+  useEffect(() => {
+    if (!practiceFeedback) return;
+    const timeout = window.setTimeout(() => {
+      setPracticeFeedback(null);
+      setPracticeReveal(false);
+      setPracticeSelectedId(null);
+      setPracticeLocked(false);
+      setPracticeIndex((current) => {
+        const length = practiceSessionCards.length;
+        if (length === 0) return 0;
+        return (current + 1) % length;
+      });
+    }, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [practiceFeedback, practiceSessionCards.length]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -130,6 +273,7 @@ export default function App() {
       audioUrl: audioDataUrl ?? undefined,
       setIds: selectedSetIds,
       backgroundColor: normalizedBackground || undefined,
+      review: existingCard?.review ?? createInitialReview(),
     };
 
     try {
@@ -254,6 +398,76 @@ export default function App() {
     setCardFormOpen(true);
   };
 
+  const openPracticeSetDialog = () => {
+    setPracticeSetDialogOpen(true);
+    setPracticeSetError(null);
+  };
+
+  const startPractice = () => {
+    const queue = buildPracticeQueue(practiceCards).queue;
+    setPracticeSessionIds(shuffleIds(queue.map((card) => card.id)));
+    setPracticeIndex(0);
+    setPracticeError(null);
+    setPracticeReveal(false);
+    setPracticeFeedback(null);
+    setPracticeSelectedId(null);
+    setPracticeLocked(false);
+    setPracticeMode(true);
+  };
+
+  const exitPractice = () => {
+    setPracticeMode(false);
+    setPracticeIndex(0);
+    setPracticeError(null);
+    setPracticeSessionIds([]);
+    setPracticeReveal(false);
+    setPracticeFeedback(null);
+    setPracticeSelectedId(null);
+    setPracticeLocked(false);
+  };
+
+  const togglePracticeSet = (setId: string) => {
+    setPracticeSetIds((current) =>
+      current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId],
+    );
+  };
+
+  const handleSelectAllPracticeSets = () => {
+    setPracticeSetIds(availableSets.map((set) => set.id));
+  };
+
+  const handleClearPracticeSets = () => {
+    setPracticeSetIds([]);
+  };
+
+  const handleConfirmPracticeSets = () => {
+    if (practiceSetIds.length === 0) {
+      setPracticeSetError('Select at least one set to practice.');
+      return;
+    }
+    setPracticeSetDialogOpen(false);
+    setPracticeSetError(null);
+    startPractice();
+  };
+
+  const handlePracticeSelect = async (selectedId: string) => {
+    if (!practiceCard || practiceLocked) return;
+    const correct = selectedId === practiceCard.id;
+    setPracticeSelectedId(selectedId);
+    setPracticeReveal(true);
+    setPracticeFeedback(correct ? 'correct' : 'incorrect');
+    setPracticeLocked(true);
+    const updated = applyReviewResult(practiceCard, correct);
+    try {
+      await putCard(updated);
+      setCards((current) => current.map((card) => (card.id === updated.id ? updated : card)));
+      setPracticeError(null);
+    } catch (error) {
+      console.error('Unable to save practice result', error);
+      setPracticeError('Unable to save your result right now.');
+    }
+  };
+
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
       <PwaPromptBanner
@@ -294,19 +508,45 @@ export default function App() {
             </Grid>
           </Grid>
 
-          <GalleryControls
-            availableSets={availableSets}
-            visibleSetIds={visibleSetIds}
-            onToggleSet={toggleVisibleSet}
-            onShowAll={selectAllVisibleSets}
-            onHideAll={clearVisibleSets}
-            showActions={showActions}
-            onToggleActions={setShowActions}
+          <PracticePanel
+            enabled={practiceMode}
+            hasDue={practicePlan.hasDue}
+            dueCount={practicePlan.dueCount}
+            totalCount={practiceMode ? practiceSessionCards.length : practiceQueue.length}
+            nextDueLabel={nextDueLabel}
+            card={practiceCard}
+            isFlipped={practiceFlipped}
+            promptSide={practicePromptSide}
+            promptMode={practicePromptMode}
+            onPromptModeChange={setPracticePromptMode}
+            options={practiceOptions}
+            selectedOptionId={practiceSelectedId}
+            locked={practiceLocked}
+            feedback={practiceFeedback}
+            canStart={availableSets.length > 0}
+            selectedSetLabel={practiceSetLabel}
+            onStart={openPracticeSetDialog}
+            onExit={exitPractice}
+            onSelectOption={handlePracticeSelect}
+            progressLabel={progressLabel}
+            error={practiceError}
           />
+
+          {!practiceMode && (
+            <GalleryControls
+              availableSets={availableSets}
+              visibleSetIds={visibleSetIds}
+              onToggleSet={toggleVisibleSet}
+              onShowAll={selectAllVisibleSets}
+              onHideAll={clearVisibleSets}
+              showActions={showActions}
+              onToggleActions={setShowActions}
+            />
+          )}
 
           {loading ? (
             <p className="empty">Loading your saved cards.</p>
-          ) : filteredCards.length === 0 ? (
+          ) : practiceMode ? null : filteredCards.length === 0 ? (
             <p className="empty">Add a card or pick a set to get started!</p>
           ) : (
             <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
@@ -342,6 +582,18 @@ export default function App() {
         onClose={cancelEditing}
         backgroundColor={backgroundColor}
         onBackgroundColorChange={setBackgroundColor}
+      />
+
+      <PracticeSetDialog
+        open={practiceSetDialogOpen}
+        sets={availableSets}
+        selectedSetIds={practiceSetIds}
+        onToggleSet={togglePracticeSet}
+        onSelectAll={handleSelectAllPracticeSets}
+        onClearAll={handleClearPracticeSets}
+        onClose={() => setPracticeSetDialogOpen(false)}
+        onConfirm={handleConfirmPracticeSets}
+        error={practiceSetError}
       />
     </Box>
   );

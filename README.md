@@ -7,6 +7,7 @@ A kid-friendly React + TypeScript web app for building, flipping, and hearing pe
 - Optional audio on each card (record in-app or upload); audio plays on flip with mute/play controls.
 - Organize cards into sets, quickly show/hide sets, and toggle edit/delete buttons for kid-safe browsing.
 - Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
+- Spaced-repetition practice mode with multiple-choice checks to prioritize missed cards.
 - Offline-ready PWA with install prompt; cards and sets persist locally in IndexedDB.
 
 ## Getting Started

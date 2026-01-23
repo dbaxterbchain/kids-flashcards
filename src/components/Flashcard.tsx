@@ -13,16 +13,38 @@ type FlashcardProps = {
   showActions?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  isFlipped?: boolean;
+  disableFlip?: boolean;
+  onFlipChange?: (value: boolean) => void;
 };
 
-export function Flashcard({ card, showActions = true, onEdit, onDelete }: FlashcardProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
+export function Flashcard({
+  card,
+  showActions = true,
+  onEdit,
+  onDelete,
+  isFlipped: isFlippedProp,
+  disableFlip = false,
+  onFlipChange,
+}: FlashcardProps) {
+  const [isFlippedState, setIsFlippedState] = useState(false);
+  const isFlipped = isFlippedProp ?? isFlippedState;
   const [muted, setMuted] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frontStyle = card.backgroundColor ? { background: card.backgroundColor } : undefined;
 
-  const toggleFlip = () => setIsFlipped((current) => !current);
+  const setFlipped = (value: boolean) => {
+    if (isFlippedProp === undefined) {
+      setIsFlippedState(value);
+    }
+    onFlipChange?.(value);
+  };
+
+  const toggleFlip = () => {
+    if (disableFlip) return;
+    setFlipped(!isFlipped);
+  };
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
