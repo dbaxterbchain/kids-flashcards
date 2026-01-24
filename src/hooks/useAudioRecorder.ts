@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { blobToDataUrl } from '../flashcards/fileUtils';
 
 type StopOptions = {
@@ -18,7 +18,7 @@ export function useAudioRecorder(maxSeconds: number) {
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const ignoreRecordingRef = useRef(false);
 
-  const stopRecording = ({ silent = false }: StopOptions = {}) => {
+  const stopRecording = useCallback(({ silent = false }: StopOptions = {}) => {
     if (silent) {
       ignoreRecordingRef.current = true;
     }
@@ -41,9 +41,9 @@ export function useAudioRecorder(maxSeconds: number) {
       recordingStreamRef.current.getTracks().forEach((track) => track.stop());
       recordingStreamRef.current = null;
     }
-  };
+  }, []);
 
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setRecordingError('Recording is not supported in this browser.');
       return;
@@ -99,17 +99,17 @@ export function useAudioRecorder(maxSeconds: number) {
       setRecordingError('Microphone permission denied or unavailable.');
       setIsRecording(false);
     }
-  };
+  }, [maxSeconds, stopRecording]);
 
-  const resetRecording = () => {
+  const resetRecording = useCallback(() => {
     stopRecording({ silent: true });
     setRecordingSeconds(0);
     setRecordingError(null);
     setIsRecording(false);
     setAudioDataUrl(null);
-  };
+  }, [stopRecording]);
 
-  useEffect(() => () => stopRecording({ silent: true }), []);
+  useEffect(() => () => stopRecording({ silent: true }), [stopRecording]);
 
   return {
     audioDataUrl,
