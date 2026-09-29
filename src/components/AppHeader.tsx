@@ -13,7 +13,10 @@ const introSteps: { icon: ReactNode; text: string }[] = [
     icon: <AddPhotoAlternateIcon />,
     text: 'Tap New card to add your own photos (family, pets, favorite things) and record your voice saying the word.',
   },
-  { icon: <EmojiEventsIcon />, text: 'Press Start in Practice for a quick matching game that repeats the tricky cards more often.' },
+  {
+    icon: <EmojiEventsIcon />,
+    text: 'Add each child under Practice for a matching game set up for their age. Each child keeps their own progress.',
+  },
   { icon: <LockOutlinedIcon />, text: 'Your cards stay on this device and work offline. Nothing is uploaded.' },
 ];
 

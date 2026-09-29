@@ -93,3 +93,9 @@
   visibility: hidden;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .flashcard-inner,
+  .flashcard-actions {
+    transition: none;
+  }
+}

@@ -1,6 +1,5 @@
 import { getAllCards, getAllSets, putCards, putSets } from '../db/cardsDb';
 import { defaultCards, defaultSets } from './defaultData';
-import { ensureReview } from './review';
 import { FlashcardData, FlashcardSet } from './types';
 
 export type LoadResult = {
@@ -20,7 +19,7 @@ const SEEDED_STARTERS_KEY = 'kids-flashcards:seeded-starters';
 const defaultCardsById = new Map(defaultCards.map((card) => [card.id, card]));
 
 function normalizeCards(cards: FlashcardData[]): FlashcardData[] {
-  return cards.map((card) => ensureReview({ ...card, setIds: card.setIds ?? [] }));
+  return cards.map((card) => ({ ...card, setIds: card.setIds ?? [] }));
 }
 
 function readSeededStarters(): SeededStarters | null {

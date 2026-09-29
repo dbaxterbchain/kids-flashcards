@@ -16,6 +16,9 @@ type FlashcardProps = {
   isFlipped?: boolean;
   disableFlip?: boolean;
   onFlipChange?: (value: boolean) => void;
+  /** Play the card's recording when it flips to the back (practice handles audio itself). */
+  playAudioOnFlip?: boolean;
+  className?: string;
 };
 
 export function Flashcard({
@@ -26,6 +29,8 @@ export function Flashcard({
   isFlipped: isFlippedProp,
   disableFlip = false,
   onFlipChange,
+  playAudioOnFlip = true,
+  className,
 }: FlashcardProps) {
   const [isFlippedState, setIsFlippedState] = useState(false);
   const isFlipped = isFlippedProp ?? isFlippedState;
@@ -64,7 +69,7 @@ export function Flashcard({
   }, [card.audioUrl]);
 
   useEffect(() => {
-    if (!isFlipped || muted || !audioRef.current) return;
+    if (!isFlipped || muted || !playAudioOnFlip || !audioRef.current) return;
     audioRef.current.currentTime = 0;
     audioRef.current
       .play()
@@ -73,7 +78,7 @@ export function Flashcard({
         console.warn('Audio play blocked', error);
         setPlayError('Tap play to hear audio');
       });
-  }, [isFlipped, muted]);
+  }, [isFlipped, muted, playAudioOnFlip]);
 
   const handleManualPlay = (event: MouseEvent) => {
     event.stopPropagation();
@@ -90,12 +95,12 @@ export function Flashcard({
 
   return (
     <StyledCard
-      className={`flashcard ${isFlipped ? 'flipped' : ''}`}
+      className={['flashcard', isFlipped ? 'flipped' : '', className ?? ''].filter(Boolean).join(' ')}
       onClick={toggleFlip}
       onKeyDown={handleKey}
-      tabIndex={0}
-      role="button"
-      aria-pressed={isFlipped}
+      tabIndex={disableFlip ? -1 : 0}
+      role={disableFlip ? undefined : 'button'}
+      aria-pressed={disableFlip ? undefined : isFlipped}
       aria-label={`Flashcard for ${card.name}`}
       elevation={3}
     >
@@ -107,7 +112,7 @@ export function Flashcard({
           <Typography variant="h5" component="p" sx={{ mb: 1, textAlign: 'center' }}>
             {card.name}
           </Typography>
-          {card.audioUrl && (
+          {card.audioUrl && playAudioOnFlip && (
             <Stack
               direction="row"
               spacing={0.5}

@@ -1,24 +1,26 @@
-﻿import AddIcon from '@mui/icons-material/Add';
+import AddIcon from '@mui/icons-material/Add';
 import { Alert, Box, Button, Container, Stack, Typography } from '@mui/material';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { unlockAudio } from './audio/sound';
 import { AppHeader } from './components/AppHeader';
 import { CardForm } from './components/CardForm';
+import { ChildDialog } from './components/ChildDialog';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
-import { PracticePanel, PracticeSummary } from './components/PracticePanel';
-import { PracticeSetDialog } from './components/PracticeSetDialog';
+import { PracticePanel } from './components/PracticePanel';
+import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { deleteCard, putCard, putSet } from './db/cardsDb';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { fileToDataUrl, slugifySetName } from './flashcards/fileUtils';
-import { applyReviewResult, buildPracticeQueue, createInitialReview } from './flashcards/review';
+import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
+import { buildPracticeQueue } from './flashcards/review';
 import { loadCardsAndSets, restoreStarterCards } from './flashcards/storage';
-import { FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS } from './flashcards/types';
+import { ChildProfile, FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS, UNCATEGORIZED_SET_ID } from './flashcards/types';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
+import { useChildProfiles } from './hooks/useChildProfiles';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { usePwa } from './hooks/usePwa';
-
-const PRACTICE_FEEDBACK_MS = 2000;
 
 const emptyStateSx = {
   p: 3,
@@ -29,67 +31,16 @@ const emptyStateSx = {
   textAlign: 'center',
 } as const;
 
-const formatDistance = (ms: number) => {
-  if (ms <= 0) return 'now';
-  const minutes = Math.max(1, Math.round(ms / 60000));
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hr`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'}`;
+type PracticeRound = {
+  profileId: string;
+  cardIds: string[];
+  seed: number;
 };
 
-const hashString = (value: string) => {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-};
-
-const createSeededRng = (seed: number) => {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-};
-
-const buildOptions = (correctCard: FlashcardData, pool: FlashcardData[], count: number, seed: number) => {
-  const rng = createSeededRng(seed);
-  const unique = new Map<string, FlashcardData>();
-  unique.set(correctCard.id, correctCard);
-  const candidates = pool.filter((card) => card.id !== correctCard.id);
-  while (unique.size < Math.min(count, pool.length) && candidates.length > 0) {
-    const index = Math.floor(rng() * candidates.length);
-    const [picked] = candidates.splice(index, 1);
-    if (picked) unique.set(picked.id, picked);
-  }
-  const options = Array.from(unique.values());
-  for (let i = options.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [options[i], options[j]] = [options[j], options[i]];
-  }
-  return options;
-};
-
-const filterCardsForPractice = (cards: FlashcardData[], selectedSetIds: string[]) => {
-  if (selectedSetIds.length === 0) return [];
-  const includeUncategorized = selectedSetIds.includes('uncategorized');
-  return cards.filter((card) => {
-    const setIds = card.setIds ?? [];
-    if (setIds.length === 0) return includeUncategorized;
-    return setIds.some((setId) => selectedSetIds.includes(setId));
-  });
-};
-
-const shuffleIds = (ids: string[]) => {
-  const shuffled = [...ids];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+type ChildDialogState = {
+  open: boolean;
+  key: number;
+  profile: ChildProfile | null;
 };
 
 export default function App() {
@@ -108,24 +59,9 @@ export default function App() {
   const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
   const [newSetName, setNewSetName] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('');
-  const [practiceMode, setPracticeMode] = useState(false);
-  const [practiceIndex, setPracticeIndex] = useState(0);
+  const [round, setRound] = useState<PracticeRound | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
-  const [practiceSessionIds, setPracticeSessionIds] = useState<string[]>([]);
-  const [practiceSessionSeed, setPracticeSessionSeed] = useState(0);
-  const [practicePromptMode, setPracticePromptMode] = useLocalStorageState<'image' | 'word' | 'alternate'>(
-    'kids-flashcards:practice-prompt-mode',
-    'alternate',
-  );
-  const [practiceReveal, setPracticeReveal] = useState(false);
-  const [practiceFeedback, setPracticeFeedback] = useState<'correct' | 'incorrect' | null>(null);
-  const [practiceSelectedId, setPracticeSelectedId] = useState<string | null>(null);
-  const [practiceLocked, setPracticeLocked] = useState(false);
-  const [practiceResults, setPracticeResults] = useState<Record<string, boolean>>({});
-  const [practiceComplete, setPracticeComplete] = useState(false);
-  const [practiceSetDialogOpen, setPracticeSetDialogOpen] = useState(false);
-  const [practiceSetIds, setPracticeSetIds] = useLocalStorageState<string[]>('kids-flashcards:practice-sets', []);
-  const [practiceSetError, setPracticeSetError] = useState<string | null>(null);
+  const [childDialog, setChildDialog] = useState<ChildDialogState>({ open: false, key: 0, profile: null });
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -143,6 +79,19 @@ export default function App() {
 
   const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
     usePwa();
+
+  const {
+    profiles,
+    activeProfile,
+    progress,
+    progressReady,
+    loading: profilesLoading,
+    error: profilesError,
+    selectProfile,
+    saveProfile,
+    removeProfile,
+    recordAnswer,
+  } = useChildProfiles(cards);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,24 +125,10 @@ export default function App() {
     const base = [...sets];
     const hasUncategorized = cards.some((card) => !card.setIds || card.setIds.length === 0);
     if (hasUncategorized) {
-      base.push({ id: 'uncategorized', name: 'No set' });
+      base.push({ id: UNCATEGORIZED_SET_ID, name: 'No set' });
     }
     return base;
   }, [sets, cards]);
-
-  useEffect(() => {
-    // Wait for saved sets to load so the remembered practice sets aren't dropped as unknown.
-    if (loading) return;
-    setPracticeSetIds((current) => {
-      const availableIds = availableSets.map((set) => set.id);
-      if (current.length === 0) {
-        return availableIds;
-      }
-      const filtered = current.filter((id) => availableIds.includes(id));
-      if (filtered.length === 0) return availableIds;
-      return filtered.length === current.length ? current : filtered;
-    });
-  }, [availableSets, loading, setPracticeSetIds]);
 
   const visibleSetIds = useMemo(
     () => availableSets.map((set) => set.id).filter((id) => !hiddenSetIds.includes(id)),
@@ -205,93 +140,38 @@ export default function App() {
     return sorted.filter((card) => {
       const cardSets = card.setIds ?? [];
       if (cardSets.length === 0) {
-        return !hiddenSetIds.includes('uncategorized');
+        return !hiddenSetIds.includes(UNCATEGORIZED_SET_ID);
       }
       return cardSets.some((id) => !hiddenSetIds.includes(id));
     });
   }, [cards, hiddenSetIds]);
 
-  const practiceCards = useMemo(() => filterCardsForPractice(cards, practiceSetIds), [cards, practiceSetIds]);
+  const practicePool = useMemo(
+    () => (activeProfile ? filterCardsForSets(cards, activeProfile.settings.setIds) : []),
+    [cards, activeProfile],
+  );
+  const practicePlan = useMemo(() => buildPracticeQueue(practicePool, progress), [practicePool, progress]);
+  const nextReviewLabel = useMemo(() => {
+    if (practicePlan.hasDue || !practicePlan.nextReviewAt) return null;
+    return formatTimeUntil(practicePlan.nextReviewAt - Date.now());
+  }, [practicePlan.hasDue, practicePlan.nextReviewAt]);
   const practiceSetLabel = useMemo(() => {
-    if (practiceSetIds.length === 0) return null;
-    const names = availableSets
-      .filter((set) => practiceSetIds.includes(set.id))
-      .map((set) => set.name);
-    if (names.length === 0) return null;
+    const setIds = activeProfile?.settings.setIds ?? null;
+    if (setIds === null) return 'All sets';
+    const names = availableSets.filter((set) => setIds.includes(set.id)).map((set) => set.name);
+    if (names.length === 0) return 'No sets';
     if (names.length <= 3) return names.join(', ');
     return `${names.slice(0, 3).join(', ')} +${names.length - 3} more`;
-  }, [availableSets, practiceSetIds]);
-  const practicePlan = useMemo(() => buildPracticeQueue(practiceCards), [practiceCards]);
-  const practiceQueue = practicePlan.queue;
-  const practiceSessionCards = useMemo(
+  }, [activeProfile, availableSets]);
+  const roundCards = useMemo(
     () =>
-      practiceSessionIds
+      (round?.cardIds ?? [])
         .map((id) => cards.find((card) => card.id === id))
         .filter((card): card is FlashcardData => Boolean(card)),
-    [cards, practiceSessionIds],
+    [cards, round],
   );
-  const practiceCard = practiceSessionCards[practiceIndex] ?? null;
-  const practicePromptSide = useMemo(() => {
-    if (practicePromptMode === 'alternate') {
-      return practiceIndex % 2 === 0 ? 'image' : 'word';
-    }
-    return practicePromptMode;
-  }, [practicePromptMode, practiceIndex]);
-  const practiceFlipped = practicePromptSide === 'word' ? !practiceReveal : practiceReveal;
-  const practiceOptions = useMemo(() => {
-    if (!practiceMode || !practiceCard) return [];
-    const pool = practiceCards.length > 0 ? practiceCards : practiceQueue;
-    const seedBase = practiceSessionSeed || 1;
-    const promptOffset = practicePromptSide === 'word' ? 17 : 0;
-    const seed = seedBase + hashString(practiceCard.id) + promptOffset;
-    return buildOptions(practiceCard, pool, 4, seed);
-  }, [practiceMode, practiceCard, practicePromptSide, practiceQueue, practiceCards, practiceSessionSeed]);
-  const progressLabel = practiceSessionCards.length > 0 ? `${practiceIndex + 1} of ${practiceSessionCards.length}` : null;
-  const progressValue =
-    practiceSessionCards.length > 0 ? ((practiceIndex + 1) / practiceSessionCards.length) * 100 : null;
-  const practiceSummary = useMemo<PracticeSummary | null>(() => {
-    if (!practiceComplete) return null;
-    return {
-      correct: practiceSessionCards.filter((card) => practiceResults[card.id]).length,
-      total: practiceSessionCards.length,
-      missed: practiceSessionCards.filter((card) => practiceResults[card.id] === false),
-    };
-  }, [practiceComplete, practiceResults, practiceSessionCards]);
-  const nextDueLabel = useMemo(() => {
-    if (practicePlan.hasDue || !practicePlan.nextReviewAt) return null;
-    return formatDistance(practicePlan.nextReviewAt - Date.now());
-  }, [practicePlan.hasDue, practicePlan.nextReviewAt]);
-
-  useEffect(() => {
-    if (!practiceMode) return;
-    if (practiceIndex >= practiceSessionCards.length) {
-      setPracticeIndex(0);
-    }
-  }, [practiceMode, practiceIndex, practiceSessionCards.length]);
-
-  useEffect(() => {
-    if (!practiceMode) return;
-    setPracticeReveal(false);
-    setPracticeFeedback(null);
-    setPracticeSelectedId(null);
-    setPracticeLocked(false);
-  }, [practiceMode, practiceCard?.id, practicePromptSide]);
-
-  useEffect(() => {
-    if (!practiceFeedback) return;
-    const timeout = window.setTimeout(() => {
-      setPracticeFeedback(null);
-      setPracticeReveal(false);
-      setPracticeSelectedId(null);
-      setPracticeLocked(false);
-      if (practiceIndex + 1 >= practiceSessionCards.length) {
-        setPracticeComplete(true);
-      } else {
-        setPracticeIndex(practiceIndex + 1);
-      }
-    }, PRACTICE_FEEDBACK_MS);
-    return () => window.clearTimeout(timeout);
-  }, [practiceFeedback, practiceIndex, practiceSessionCards.length]);
+  const defaultAvatar =
+    AVATARS.find((avatar) => !profiles.some((profile) => profile.avatar === avatar.emoji))?.emoji ?? AVATARS[0].emoji;
 
   const resetForm = () => {
     setEditingId(null);
@@ -326,7 +206,8 @@ export default function App() {
       audioUrl: audioDataUrl ?? undefined,
       setIds: selectedSetIds,
       backgroundColor: normalizedBackground || undefined,
-      review: existingCard?.review ?? createInitialReview(),
+      // Kept until it's moved to the first child's progress.
+      review: existingCard?.review,
     };
 
     try {
@@ -335,7 +216,7 @@ export default function App() {
         editingId ? current.map((card) => (card.id === editingId ? payload : card)) : [payload, ...current],
       );
       // Hidden sets are remembered, so make sure the card just saved isn't filtered out of view.
-      const cardSetIds = selectedSetIds.length > 0 ? selectedSetIds : ['uncategorized'];
+      const cardSetIds = selectedSetIds.length > 0 ? selectedSetIds : [UNCATEGORIZED_SET_ID];
       setHiddenSetIds((current) =>
         cardSetIds.some((id) => !current.includes(id)) ? current : current.filter((id) => !cardSetIds.includes(id)),
       );
@@ -470,81 +351,45 @@ export default function App() {
     setCardFormOpen(true);
   };
 
-  const openPracticeSetDialog = () => {
-    setPracticeSetDialogOpen(true);
-    setPracticeSetError(null);
-  };
-
   const startPractice = () => {
-    const queue = buildPracticeQueue(practiceCards).queue;
-    setPracticeSessionIds(shuffleIds(queue.map((card) => card.id)));
-    setPracticeSessionSeed(Date.now());
-    setPracticeIndex(0);
+    if (!activeProfile || !progressReady) return;
+    // Start is a tap, which is when browsers allow sound to be switched on.
+    unlockAudio();
     setPracticeError(null);
-    setPracticeReveal(false);
-    setPracticeFeedback(null);
-    setPracticeSelectedId(null);
-    setPracticeLocked(false);
-    setPracticeResults({});
-    setPracticeComplete(false);
-    setPracticeMode(true);
+    setRound({
+      profileId: activeProfile.id,
+      cardIds: buildRound(practicePool, progress, activeProfile.settings.roundSize),
+      seed: Date.now(),
+    });
+    window.scrollTo({ top: 0 });
   };
 
-  const exitPractice = () => {
-    setPracticeMode(false);
-    setPracticeIndex(0);
-    setPracticeError(null);
-    setPracticeSessionIds([]);
-    setPracticeSessionSeed(0);
-    setPracticeReveal(false);
-    setPracticeFeedback(null);
-    setPracticeSelectedId(null);
-    setPracticeLocked(false);
-    setPracticeResults({});
-    setPracticeComplete(false);
-  };
+  const exitPractice = () => setRound(null);
 
-  const togglePracticeSet = (setId: string) => {
-    setPracticeSetIds((current) =>
-      current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId],
-    );
-  };
-
-  const handleSelectAllPracticeSets = () => {
-    setPracticeSetIds(availableSets.map((set) => set.id));
-  };
-
-  const handleClearPracticeSets = () => {
-    setPracticeSetIds([]);
-  };
-
-  const handleConfirmPracticeSets = () => {
-    if (practiceSetIds.length === 0) {
-      setPracticeSetError('Select at least one set to practice.');
-      return;
-    }
-    setPracticeSetDialogOpen(false);
-    setPracticeSetError(null);
-    startPractice();
-  };
-
-  const handlePracticeSelect = async (selectedId: string) => {
-    if (!practiceCard || practiceLocked) return;
-    const correct = selectedId === practiceCard.id;
-    setPracticeSelectedId(selectedId);
-    setPracticeReveal(true);
-    setPracticeFeedback(correct ? 'correct' : 'incorrect');
-    setPracticeLocked(true);
-    setPracticeResults((current) => ({ ...current, [practiceCard.id]: correct }));
-    const updated = applyReviewResult(practiceCard, correct);
-    try {
-      await putCard(updated);
-      setCards((current) => current.map((card) => (card.id === updated.id ? updated : card)));
-      setPracticeError(null);
-    } catch (error) {
+  const handleAnswer = (cardId: string, correct: boolean) => {
+    recordAnswer(cardId, correct).catch((error) => {
       console.error('Unable to save practice result', error);
-      setPracticeError('Unable to save your result right now.');
-    }
+      setPracticeError("Couldn't save that answer, so progress may be out of date.");
+    });
+  };
+
+  const openAddChild = () => setChildDialog({ open: true, key: Date.now(), profile: null });
+
+  const openEditChild = () => {
+    if (activeProfile) setChildDialog({ open: true, key: Date.now(), profile: activeProfile });
+  };
+
+  const closeChildDialog = () => setChildDialog((current) => ({ ...current, open: false }));
+
+  const handleSaveChild = async (profile: ChildProfile) => {
+    await saveProfile(profile);
+    closeChildDialog();
+  };
+
+  const handleRemoveChild = async (profile: ChildProfile) => {
+    if (!window.confirm(`Remove ${profile.name}? Their practice progress will be deleted too.`)) return;
+    await removeProfile(profile.id);
+    closeChildDialog();
   };
 
   return (
@@ -558,101 +403,104 @@ export default function App() {
         onDismissOfflineReady={dismissOfflineReady}
         isOffline={isOffline}
       />
-      <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
-        <AppHeader />
+      <Container maxWidth={round ? 'md' : 'lg'} sx={{ py: { xs: 2, sm: 4 } }}>
+        {round && activeProfile ? (
+          <PracticeSession
+            key={round.seed}
+            profile={activeProfile}
+            cards={roundCards}
+            pool={practicePool}
+            seed={round.seed}
+            onAnswer={handleAnswer}
+            onRestart={startPractice}
+            onExit={exitPractice}
+            error={practiceError}
+          />
+        ) : (
+          <>
+            <AppHeader />
 
-        <PracticePanel
-          enabled={practiceMode}
-          hasDue={practicePlan.hasDue}
-          dueCount={practicePlan.dueCount}
-          totalCount={practiceMode ? practiceSessionCards.length : practiceQueue.length}
-          nextDueLabel={nextDueLabel}
-          card={practiceCard}
-          isFlipped={practiceFlipped}
-          promptSide={practicePromptSide}
-          promptMode={practicePromptMode}
-          onPromptModeChange={setPracticePromptMode}
-          options={practiceOptions}
-          selectedOptionId={practiceSelectedId}
-          locked={practiceLocked}
-          feedback={practiceFeedback}
-          canStart={availableSets.length > 0}
-          selectedSetLabel={practiceSetLabel}
-          progressValue={progressValue}
-          onStart={openPracticeSetDialog}
-          onExit={exitPractice}
-          onRestart={startPractice}
-          onSelectOption={handlePracticeSelect}
-          progressLabel={progressLabel}
-          summary={practiceSummary}
-          error={practiceError}
-        />
-
-        {!practiceMode && (
-          <Box component="section" aria-labelledby="gallery-heading">
-            <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography id="gallery-heading" variant="h5" component="h2" sx={{ fontWeight: 800 }}>
-                  Your cards
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Tap a card to flip it over.
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<AddIcon />}
-                onClick={openCreateForm}
-                sx={{ flexShrink: 0 }}
-              >
-                New card
-              </Button>
-            </Stack>
-
-            {galleryError && (
-              <Alert severity="warning" onClose={() => setGalleryError(null)} sx={{ mb: 2 }}>
-                {galleryError}
-              </Alert>
-            )}
-
-            <GalleryControls
-              availableSets={availableSets}
-              visibleSetIds={visibleSetIds}
-              onToggleSet={toggleVisibleSet}
-              onShowAll={selectAllVisibleSets}
-              onHideAll={clearVisibleSets}
-              showActions={showActions}
-              onToggleActions={setShowActions}
+            <PracticePanel
+              profiles={profiles}
+              activeProfile={activeProfile}
+              loading={loading || profilesLoading}
+              readyCount={practicePlan.dueCount}
+              poolSize={practicePool.length}
+              canStart={practicePool.length >= 2 && progressReady}
+              nextReviewLabel={nextReviewLabel}
+              setLabel={practiceSetLabel}
+              onSelectProfile={selectProfile}
+              onAddProfile={openAddChild}
+              onEditProfile={openEditChild}
+              onStart={startPractice}
+              error={profilesError}
             />
 
-            {loading ? (
-              <Typography color="text.secondary" sx={emptyStateSx}>
-                Loading your cards…
-              </Typography>
-            ) : cards.length === 0 ? (
-              <Stack spacing={2} alignItems="center" sx={emptyStateSx}>
-                <Typography>No cards yet. Make your first card, or bring back the starter cards.</Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateForm}>
-                    New card
-                  </Button>
-                  <Button variant="outlined" onClick={handleRestoreStarterCards}>
-                    Bring back starter cards
-                  </Button>
-                </Stack>
-              </Stack>
-            ) : filteredCards.length === 0 ? (
-              <Stack spacing={2} alignItems="center" sx={emptyStateSx}>
-                <Typography>No cards in the sets you&apos;re showing.</Typography>
-                <Button variant="outlined" onClick={selectAllVisibleSets}>
-                  Show all sets
+            <Box component="section" aria-labelledby="gallery-heading">
+              <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography id="gallery-heading" variant="h5" component="h2" sx={{ fontWeight: 800 }}>
+                    Your cards
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tap a card to flip it over.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<AddIcon />}
+                  onClick={openCreateForm}
+                  sx={{ flexShrink: 0 }}
+                >
+                  New card
                 </Button>
               </Stack>
-            ) : (
-              <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
-            )}
-          </Box>
+
+              {galleryError && (
+                <Alert severity="warning" onClose={() => setGalleryError(null)} sx={{ mb: 2 }}>
+                  {galleryError}
+                </Alert>
+              )}
+
+              <GalleryControls
+                availableSets={availableSets}
+                visibleSetIds={visibleSetIds}
+                onToggleSet={toggleVisibleSet}
+                onShowAll={selectAllVisibleSets}
+                onHideAll={clearVisibleSets}
+                showActions={showActions}
+                onToggleActions={setShowActions}
+              />
+
+              {loading ? (
+                <Typography color="text.secondary" sx={emptyStateSx}>
+                  Loading your cards…
+                </Typography>
+              ) : cards.length === 0 ? (
+                <Stack spacing={2} alignItems="center" sx={emptyStateSx}>
+                  <Typography>No cards yet. Make your first card, or bring back the starter cards.</Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateForm}>
+                      New card
+                    </Button>
+                    <Button variant="outlined" onClick={handleRestoreStarterCards}>
+                      Bring back starter cards
+                    </Button>
+                  </Stack>
+                </Stack>
+              ) : filteredCards.length === 0 ? (
+                <Stack spacing={2} alignItems="center" sx={emptyStateSx}>
+                  <Typography>No cards in the sets you&apos;re showing.</Typography>
+                  <Button variant="outlined" onClick={selectAllVisibleSets}>
+                    Show all sets
+                  </Button>
+                </Stack>
+              ) : (
+                <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
+              )}
+            </Box>
+          </>
         )}
       </Container>
 
@@ -686,16 +534,15 @@ export default function App() {
         onBackgroundColorChange={setBackgroundColor}
       />
 
-      <PracticeSetDialog
-        open={practiceSetDialogOpen}
+      <ChildDialog
+        key={childDialog.key}
+        open={childDialog.open}
+        profile={childDialog.profile}
+        defaultAvatar={defaultAvatar}
         sets={availableSets}
-        selectedSetIds={practiceSetIds}
-        onToggleSet={togglePracticeSet}
-        onSelectAll={handleSelectAllPracticeSets}
-        onClearAll={handleClearPracticeSets}
-        onClose={() => setPracticeSetDialogOpen(false)}
-        onConfirm={handleConfirmPracticeSets}
-        error={practiceSetError}
+        onClose={closeChildDialog}
+        onSave={handleSaveChild}
+        onRemove={handleRemoveChild}
       />
     </Box>
   );

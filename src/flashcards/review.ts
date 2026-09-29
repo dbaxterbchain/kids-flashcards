@@ -4,6 +4,9 @@ const MIN_EASE_FACTOR = 1.3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FAILED_RETRY_MS = 10 * 60 * 1000;
 
+/** One child's review state for each card, keyed by card id. */
+export type ProgressByCard = Record<string, FlashcardReview>;
+
 export function createInitialReview(now: number = Date.now()): FlashcardReview {
   return {
     lastReviewedAt: null,
@@ -14,18 +17,12 @@ export function createInitialReview(now: number = Date.now()): FlashcardReview {
   };
 }
 
-export function ensureReview(card: FlashcardData, now: number = Date.now()): FlashcardData {
-  if (card.review) return card;
-  return { ...card, review: createInitialReview(now) };
-}
-
 export function applyReviewResult(
-  card: FlashcardData,
+  review: FlashcardReview | undefined,
   correct: boolean,
   now: number = Date.now(),
-): FlashcardData {
-  const review = card.review ?? createInitialReview(now);
-  let { intervalDays, easeFactor, reviewCount } = review;
+): FlashcardReview {
+  let { intervalDays, easeFactor, reviewCount } = review ?? createInitialReview(now);
 
   if (!correct) {
     intervalDays = 0;
@@ -50,15 +47,12 @@ export function applyReviewResult(
   const nextReviewAt = correct ? now + intervalDays * DAY_MS : now + FAILED_RETRY_MS;
 
   return {
-    ...card,
-    review: {
-      lastReviewedAt: now,
-      nextReviewAt,
-      intervalDays,
-      easeFactor,
-      reviewCount,
-      lastCorrect: correct,
-    },
+    lastReviewedAt: now,
+    nextReviewAt,
+    intervalDays,
+    easeFactor,
+    reviewCount,
+    lastCorrect: correct,
   };
 }
 
@@ -69,30 +63,36 @@ export type PracticeQueue = {
   nextReviewAt?: number;
 };
 
-export function buildPracticeQueue(cards: FlashcardData[], now: number = Date.now()): PracticeQueue {
-  const normalized = cards.map((card) => ensureReview(card, now));
-  const due = normalized.filter((card) => (card.review?.nextReviewAt ?? now) <= now);
-  const upcoming = normalized.filter((card) => (card.review?.nextReviewAt ?? now) > now);
+export function buildPracticeQueue(
+  cards: FlashcardData[],
+  progress: ProgressByCard,
+  now: number = Date.now(),
+): PracticeQueue {
+  const reviewOf = (card: FlashcardData) => progress[card.id] ?? createInitialReview(now);
+  const isMissed = (review: FlashcardReview) =>
+    review.lastCorrect === false || (review.lastCorrect == null && (review.lastScore ?? 5) <= 2);
+  const due = cards.filter((card) => reviewOf(card).nextReviewAt <= now);
+  const upcoming = cards.filter((card) => reviewOf(card).nextReviewAt > now);
 
   const sortByPriority = (a: FlashcardData, b: FlashcardData) => {
-    const aMissed = a.review?.lastCorrect === false || (a.review?.lastCorrect == null && (a.review?.lastScore ?? 5) <= 2);
-    const bMissed = b.review?.lastCorrect === false || (b.review?.lastCorrect == null && (b.review?.lastScore ?? 5) <= 2);
+    const aReview = reviewOf(a);
+    const bReview = reviewOf(b);
+    const aMissed = isMissed(aReview);
+    const bMissed = isMissed(bReview);
     if (aMissed !== bMissed) return aMissed ? -1 : 1;
     if (aMissed && bMissed) {
-      return (b.review?.lastReviewedAt ?? 0) - (a.review?.lastReviewedAt ?? 0);
+      return (bReview.lastReviewedAt ?? 0) - (aReview.lastReviewedAt ?? 0);
     }
-    return (a.review?.nextReviewAt ?? now) - (b.review?.nextReviewAt ?? now);
+    return aReview.nextReviewAt - bReview.nextReviewAt;
   };
 
-  const sorted = [...normalized].sort(sortByPriority);
+  const sorted = [...cards].sort(sortByPriority);
 
   if (due.length > 0) {
     const dueQueue = [...due].sort(sortByPriority);
-    const upcomingQueue = [...upcoming].sort(
-      (a, b) => (a.review?.nextReviewAt ?? now) - (b.review?.nextReviewAt ?? now),
-    );
+    const upcomingQueue = [...upcoming].sort((a, b) => reviewOf(a).nextReviewAt - reviewOf(b).nextReviewAt);
     return { queue: [...dueQueue, ...upcomingQueue], hasDue: true, dueCount: due.length };
   }
 
-  return { queue: sorted, hasDue: false, dueCount: 0, nextReviewAt: sorted[0]?.review?.nextReviewAt };
+  return { queue: sorted, hasDue: false, dueCount: 0, nextReviewAt: sorted[0] ? reviewOf(sorted[0]).nextReviewAt : undefined };
 }
