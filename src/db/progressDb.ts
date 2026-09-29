@@ -92,3 +92,21 @@ export async function putProgress(records: CardProgress[]) {
   records.forEach((record) => store.put(record));
   await transactionDone(tx);
 }
+
+export async function getAllProgress(): Promise<CardProgress[]> {
+  const db = await openDb();
+  return requestToPromise(db.transaction(PROGRESS_STORE).objectStore(PROGRESS_STORE).getAll());
+}
+
+/** Replaces every child and all progress in one transaction, so a failure leaves the old ones in place. */
+export async function replaceProfilesAndProgress(profiles: ChildProfile[], progress: CardProgress[]) {
+  const db = await openDb();
+  const tx = db.transaction([PROFILE_STORE, PROGRESS_STORE], 'readwrite');
+  const profileStore = tx.objectStore(PROFILE_STORE);
+  const progressStore = tx.objectStore(PROGRESS_STORE);
+  profileStore.clear();
+  progressStore.clear();
+  profiles.forEach((profile) => profileStore.put(profile));
+  progress.forEach((record) => progressStore.put(record));
+  await transactionDone(tx);
+}

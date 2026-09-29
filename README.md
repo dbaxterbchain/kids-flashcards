@@ -11,6 +11,7 @@ A kid-friendly React + TypeScript web app for building, flipping, and hearing pe
 - Practice for each child: a profile per child (name, animal avatar, age-based settings) with separate spaced-repetition progress.
 - Audio-first practice game for pre-readers: words are read aloud (your recording, or the device's voice), wrong taps get another try, and rounds end with a celebration.
 - Offline-ready PWA with install prompt; cards, sets, children, and progress persist locally in IndexedDB.
+- Backup and restore: save everything (pictures, recordings, children, and progress included) to a single file, then restore it on this device or a new one.
 
 ## Getting Started
 
@@ -67,5 +68,6 @@ public/
 - The app registers a service worker (via `vite-plugin-pwa`) so you can install it and use cached cards offline.
 - Cards and sets are stored locally in IndexedDB; clearing site data will reset to the starter deck.
 - Children and their practice progress live in a separate IndexedDB database (`kids-flashcards-progress`), so each child's progress stays separate. Nothing is uploaded.
+- Because everything stays on the device, clearing site data or losing the device loses it. Grown-ups › Settings › **Save a backup** writes a JSON file (shared via the share sheet on phones and tablets, downloaded elsewhere), and **Restore from a backup** replaces everything on the device with a backup's contents. Imported files are checked, and only embedded pictures and recordings, plain colors, and known fields are kept.
 
 Enjoy helping kids learn with custom, colorful flashcards!

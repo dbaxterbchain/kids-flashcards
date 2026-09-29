@@ -7,6 +7,21 @@ import { FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards
 
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
+const STARTER_SET_ORDER = new Map(defaultSets.map((set, index) => [set.id, index]));
+
+// Starter sets keep their usual order, and a parent's own sets follow alphabetically, so the order
+// is the same every time (the database hands sets back sorted by id).
+function sortSets(sets: FlashcardSet[]) {
+  return [...sets].sort((a, b) => {
+    const aStarter = STARTER_SET_ORDER.get(a.id);
+    const bStarter = STARTER_SET_ORDER.get(b.id);
+    if (aStarter !== undefined || bStarter !== undefined) {
+      return (aStarter ?? Number.MAX_SAFE_INTEGER) - (bStarter ?? Number.MAX_SAFE_INTEGER);
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+}
+
 /** The cards and sets saved on this device, and the ways to change them. */
 export function useCardLibrary() {
   const [cards, setCards] = useState<FlashcardData[]>([]);
@@ -96,6 +111,8 @@ export function useCardLibrary() {
     return restored;
   }, [cards, sets]);
 
+  const sortedSets = useMemo(() => sortSets(sets), [sets]);
+
   const missingStarterCount = useMemo(
     () => defaultCards.filter((starter) => !cards.some((card) => card.id === starter.id)).length,
     [cards],
@@ -103,7 +120,7 @@ export function useCardLibrary() {
 
   return {
     cards,
-    sets,
+    sets: sortedSets,
     loading,
     loadError,
     saveCard,
