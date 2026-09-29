@@ -1,7 +1,10 @@
 export type FlashcardData = {
   id: string;
+  /** The word or answer on the back of the card; also what gets read aloud. */
   name: string;
   imageUrl: string;
+  /** Text shown on the front instead of a picture, e.g. "2 + 3" or "A". */
+  frontText?: string;
   createdAt: number;
   audioUrl?: string;
   setIds?: string[];

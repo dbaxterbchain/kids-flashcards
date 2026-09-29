@@ -1,23 +1,20 @@
 import AddIcon from '@mui/icons-material/Add';
 import { Alert, Box, Button, Container, Stack, Typography } from '@mui/material';
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { unlockAudio } from './audio/sound';
 import { AppHeader } from './components/AppHeader';
-import { CardForm } from './components/CardForm';
+import { CardEditor } from './components/CardEditor';
 import { ChildDialog } from './components/ChildDialog';
 import { FlashcardGrid } from './components/FlashcardGrid';
 import { GalleryControls } from './components/GalleryControls';
 import { PracticePanel } from './components/PracticePanel';
 import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
-import { deleteCard, putCard, putSet } from './db/cardsDb';
-import { defaultCards, defaultSets } from './flashcards/defaultData';
-import { fileToDataUrl, slugifySetName } from './flashcards/fileUtils';
+import { defaultSets } from './flashcards/defaultData';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
-import { loadCardsAndSets, restoreStarterCards } from './flashcards/storage';
-import { ChildProfile, FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS, UNCATEGORIZED_SET_ID } from './flashcards/types';
-import { useAudioRecorder } from './hooks/useAudioRecorder';
+import { ChildProfile, FlashcardData, UNCATEGORIZED_SET_ID } from './flashcards/types';
+import { useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { usePwa } from './hooks/usePwa';
@@ -43,39 +40,23 @@ type ChildDialogState = {
   profile: ChildProfile | null;
 };
 
+type CardEditorState = {
+  open: boolean;
+  key: number;
+  card: FlashcardData | null;
+};
+
 export default function App() {
-  const [cards, setCards] = useState<FlashcardData[]>([]);
-  const [sets, setSets] = useState<FlashcardSet[]>([]);
+  const library = useCardLibrary();
+  const { cards, sets, loading } = library;
   // Hidden (rather than visible) sets are saved so new sets show up by default.
   const [hiddenSetIds, setHiddenSetIds] = useLocalStorageState<string[]>('kids-flashcards:hidden-sets', []);
-  const [name, setName] = useState('');
-  const [imageData, setImageData] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showActions, setShowActions] = useLocalStorageState('kids-flashcards:show-card-actions', true);
-  const [cardFormOpen, setCardFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [galleryError, setGalleryError] = useState<string | null>(null);
-  const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
-  const [newSetName, setNewSetName] = useState('');
-  const [backgroundColor, setBackgroundColor] = useState('');
+  const [cardEditor, setCardEditor] = useState<CardEditorState>({ open: false, key: 0, card: null });
   const [round, setRound] = useState<PracticeRound | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [childDialog, setChildDialog] = useState<ChildDialogState>({ open: false, key: 0, profile: null });
-
-  const formRef = useRef<HTMLFormElement | null>(null);
-
-  const {
-    audioDataUrl,
-    setAudioDataUrl,
-    recordingError,
-    setRecordingError,
-    recordingSeconds,
-    isRecording,
-    startRecording,
-    stopRecording,
-    resetRecording,
-  } = useAudioRecorder(MAX_AUDIO_SECONDS);
 
   const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
     usePwa();
@@ -93,33 +74,7 @@ export default function App() {
     recordAnswer,
   } = useChildProfiles(cards);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      try {
-        const { cards: storedCards, sets: storedSets } = await loadCardsAndSets();
-        if (cancelled) return;
-
-        setCards(storedCards);
-        setSets(storedSets);
-      } catch (error) {
-        console.error('Unable to load saved cards', error);
-        if (!cancelled) {
-          setCards(defaultCards);
-          setSets(defaultSets);
-          setGalleryError('Showing the starter cards because your saved cards could not be read.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadData();
-    return () => {
-      cancelled = true;
-      resetRecording();
-    };
-  }, [resetRecording]);
+  const shownError = galleryError ?? library.loadError;
 
   const availableSets = useMemo(() => {
     const base = [...sets];
@@ -173,119 +128,18 @@ export default function App() {
   const defaultAvatar =
     AVATARS.find((avatar) => !profiles.some((profile) => profile.avatar === avatar.emoji))?.emoji ?? AVATARS[0].emoji;
 
-  const resetForm = () => {
-    setEditingId(null);
-    setName('');
-    setImageData(null);
-    setUploadError(null);
-    setSelectedSetIds([]);
-    setNewSetName('');
-    setBackgroundColor('');
-    resetRecording();
-    formRef.current?.reset();
-  };
+  const openCardEditor = (card: FlashcardData | null) => setCardEditor({ open: true, key: Date.now(), card });
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!name.trim()) {
-      setUploadError('Please give your card a fun name!');
-      return;
-    }
-    if (!imageData && !backgroundColor.trim()) {
-      setUploadError('Add a picture or pick a background color.');
-      return;
-    }
+  const closeCardEditor = () => setCardEditor((current) => ({ ...current, open: false }));
 
-    const existingCard = editingId ? cards.find((card) => card.id === editingId) : undefined;
-    const normalizedBackground = backgroundColor.trim();
-    const payload: FlashcardData = {
-      id: editingId ?? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`),
-      name: name.trim(),
-      imageUrl: imageData ?? '',
-      createdAt: editingId ? existingCard?.createdAt ?? Date.now() : Date.now(),
-      audioUrl: audioDataUrl ?? undefined,
-      setIds: selectedSetIds,
-      backgroundColor: normalizedBackground || undefined,
-      // Kept until it's moved to the first child's progress.
-      review: existingCard?.review,
-    };
-
-    try {
-      await putCard(payload);
-      setCards((current) =>
-        editingId ? current.map((card) => (card.id === editingId ? payload : card)) : [payload, ...current],
-      );
-      // Hidden sets are remembered, so make sure the card just saved isn't filtered out of view.
-      const cardSetIds = selectedSetIds.length > 0 ? selectedSetIds : [UNCATEGORIZED_SET_ID];
-      setHiddenSetIds((current) =>
-        cardSetIds.some((id) => !current.includes(id)) ? current : current.filter((id) => !cardSetIds.includes(id)),
-      );
-      resetForm();
-      setCardFormOpen(false);
-    } catch (error) {
-      console.error('Unable to save card', error);
-      setUploadError('Unable to save card. Storage might be full or blocked.');
-    }
-  };
-
-  const handleFileChange = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
-    const file = fileList[0];
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Only image files are allowed.');
-      return;
-    }
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setImageData(dataUrl);
-      setUploadError(null);
-    } catch (error) {
-      console.error(error);
-      setUploadError('Something went wrong reading that file.');
-    }
-  };
-
-  const handleAudioFileChange = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
-    const file = fileList[0];
-    if (!file.type.startsWith('audio/')) {
-      setRecordingError('Only audio files are allowed.');
-      return;
-    }
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setAudioDataUrl(dataUrl);
-      setRecordingError(null);
-    } catch (error) {
-      console.error(error);
-      setRecordingError('Unable to read that audio file.');
-    }
-  };
-
-  const handleToggleSetForCard = (setId: string) => {
-    setSelectedSetIds((current) => (current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId]));
-  };
-
-  const handleAddSet = async () => {
-    const trimmed = newSetName.trim();
-    if (!trimmed) return;
-    const id = slugifySetName(trimmed);
-    if (sets.some((set) => set.id === id)) {
-      setSelectedSetIds((current) => (current.includes(id) ? current : [...current, id]));
-      setNewSetName('');
-      return;
-    }
-    const set: FlashcardSet = { id, name: trimmed };
-    try {
-      await putSet(set);
-      setSets((current) => [...current, set]);
-      setSelectedSetIds((current) => [...current, id]);
-      setHiddenSetIds((current) => current.filter((hiddenId) => hiddenId !== id));
-      setNewSetName('');
-    } catch (error) {
-      console.error('Unable to add set', error);
-      setUploadError('Unable to add set right now.');
-    }
+  const handleSaveCard = async (card: FlashcardData) => {
+    await library.saveCard(card);
+    // Hidden sets are remembered, so make sure the card just saved isn't filtered out of view.
+    const cardSetIds = card.setIds && card.setIds.length > 0 ? card.setIds : [UNCATEGORIZED_SET_ID];
+    setHiddenSetIds((current) =>
+      cardSetIds.some((id) => !current.includes(id)) ? current : current.filter((id) => !cardSetIds.includes(id)),
+    );
+    closeCardEditor();
   };
 
   const toggleVisibleSet = (setId: string) => {
@@ -300,9 +154,7 @@ export default function App() {
 
   const handleRestoreStarterCards = async () => {
     try {
-      const restored = await restoreStarterCards(cards, sets);
-      setSets((current) => [...current, ...restored.sets]);
-      setCards((current) => [...current, ...restored.cards]);
+      await library.restoreStarters();
       const starterSetIds = defaultSets.map((set) => set.id);
       setHiddenSetIds((current) => current.filter((id) => !starterSetIds.includes(id)));
       setGalleryError(null);
@@ -312,43 +164,14 @@ export default function App() {
     }
   };
 
-  const handleEdit = (card: FlashcardData) => {
-    setCardFormOpen(true);
-    setEditingId(card.id);
-    setName(card.name);
-    setImageData(card.imageUrl);
-    setAudioDataUrl(card.audioUrl ?? null);
-    setSelectedSetIds(card.setIds ?? []);
-    setBackgroundColor(card.backgroundColor ?? '');
-    setUploadError(null);
-  };
-
-  const handleDelete = (id: string) => {
-    const cardToDelete = cards.find((card) => card.id === id);
-    const confirmed = window.confirm(`Delete "${cardToDelete?.name ?? 'this card'}"? This cannot be undone.`);
+  const handleDelete = (card: FlashcardData) => {
+    const confirmed = window.confirm(`Delete "${card.name}"? This cannot be undone.`);
     if (!confirmed) return;
 
-    deleteCard(id)
-      .then(() => {
-        setCards((current) => current.filter((card) => card.id !== id));
-        if (editingId === id) {
-          resetForm();
-        }
-      })
-      .catch((error) => {
-        console.error('Unable to delete card', error);
-        setGalleryError('Unable to delete card. Storage might be blocked.');
-      });
-  };
-
-  const cancelEditing = () => {
-    resetForm();
-    setCardFormOpen(false);
-  };
-
-  const openCreateForm = () => {
-    resetForm();
-    setCardFormOpen(true);
+    library.removeCard(card.id).catch((error) => {
+      console.error('Unable to delete card', error);
+      setGalleryError('Unable to delete card. Storage might be blocked.');
+    });
   };
 
   const startPractice = () => {
@@ -450,16 +273,16 @@ export default function App() {
                   variant="contained"
                   size="large"
                   startIcon={<AddIcon />}
-                  onClick={openCreateForm}
+                  onClick={() => openCardEditor(null)}
                   sx={{ flexShrink: 0 }}
                 >
                   New card
                 </Button>
               </Stack>
 
-              {galleryError && (
+              {shownError && (
                 <Alert severity="warning" onClose={() => setGalleryError(null)} sx={{ mb: 2 }}>
-                  {galleryError}
+                  {shownError}
                 </Alert>
               )}
 
@@ -481,7 +304,7 @@ export default function App() {
                 <Stack spacing={2} alignItems="center" sx={emptyStateSx}>
                   <Typography>No cards yet. Make your first card, or bring back the starter cards.</Typography>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateForm}>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCardEditor(null)}>
                       New card
                     </Button>
                     <Button variant="outlined" onClick={handleRestoreStarterCards}>
@@ -497,45 +320,31 @@ export default function App() {
                   </Button>
                 </Stack>
               ) : (
-                <FlashcardGrid cards={filteredCards} showActions={showActions} onEdit={handleEdit} onDelete={handleDelete} />
+                <FlashcardGrid
+                  cards={filteredCards}
+                  showActions={showActions}
+                  speakOnFlip
+                  onEdit={(card) => openCardEditor(card)}
+                  onDelete={handleDelete}
+                />
               )}
             </Box>
           </>
         )}
       </Container>
 
-      <CardForm
-        formRef={formRef}
-        name={name}
-        onNameChange={setName}
-        imageData={imageData}
-        uploadError={uploadError}
-        editingId={editingId}
-        onSubmit={handleSubmit}
-        onCancelEdit={cancelEditing}
-        onImageFileChange={handleFileChange}
+      <CardEditor
+        key={`card-editor-${cardEditor.key}`}
+        open={cardEditor.open}
+        card={cardEditor.card}
         sets={sets}
-        selectedSetIds={selectedSetIds}
-        onToggleSet={handleToggleSetForCard}
-        newSetName={newSetName}
-        onSetNameChange={setNewSetName}
-        onAddSet={handleAddSet}
-        audioDataUrl={audioDataUrl}
-        recordingError={recordingError}
-        recordingSeconds={recordingSeconds}
-        isRecording={isRecording}
-        onStartRecording={startRecording}
-        onStopRecording={stopRecording}
-        onAudioFileChange={handleAudioFileChange}
-        onClearAudio={resetRecording}
-        open={cardFormOpen}
-        onClose={cancelEditing}
-        backgroundColor={backgroundColor}
-        onBackgroundColorChange={setBackgroundColor}
+        onClose={closeCardEditor}
+        onSave={handleSaveCard}
+        onCreateSet={library.createSet}
       />
 
       <ChildDialog
-        key={childDialog.key}
+        key={`child-dialog-${childDialog.key}`}
         open={childDialog.open}
         profile={childDialog.profile}
         defaultAvatar={defaultAvatar}

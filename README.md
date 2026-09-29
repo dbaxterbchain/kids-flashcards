@@ -3,7 +3,7 @@
 A kid-friendly React + TypeScript web app for building, flipping, and hearing personalized flashcards. Add your own pictures, colors, and audio, then install it as a PWA so little learners can use it offline.
 
 ## Features
-- Create, edit, and delete cards with custom images or solid-color fronts.
+- Create, edit, and delete cards with a photo (taken in the app or chosen from your library, and shrunk automatically), a solid color, or text such as "2 + 3" on the front.
 - Optional audio on each card (record in-app or upload); audio plays on flip with mute/play controls.
 - Organize cards into sets, quickly show/hide sets, and toggle edit/delete buttons for kid-safe browsing.
 - Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
@@ -42,7 +42,7 @@ npm run lint
 ## Usage
 1. Start the dev server and open the app.
 2. Click **New card** to open the card form.
-3. Enter a card name, upload an image or pick a background color, and optionally record/upload audio (up to 10s).
+3. Choose the front (a photo, a color, or text), type the word for the back, and optionally record your voice saying it (up to 10s).
 4. Add the card to one or more sets, or create a new set on the fly.
 5. Flip cards by clicking or pressing Space/Enter; use the gallery controls to show/hide sets and toggle action buttons.
 6. Under **Practice**, add each child, pick who's playing, and press **Start**. The settings button next to Start changes their question type, number of choices, round length, and sets.

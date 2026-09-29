@@ -62,8 +62,8 @@
   transform: none;
 }
 
-.flashcard--practice .flashcard-back .MuiTypography-root {
-  font-size: clamp(2rem, 8vw, 3rem);
+.flashcard--practice .flashcard-name {
+  font-size: clamp(2rem, 16cqi, 3.25rem);
   font-weight: 800;
 }
 

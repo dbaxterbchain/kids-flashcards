@@ -5,8 +5,8 @@ type StopOptions = {
   silent?: boolean;
 };
 
-export function useAudioRecorder(maxSeconds: number) {
-  const [audioDataUrl, setAudioDataUrl] = useState<string | null>(null);
+export function useAudioRecorder(maxSeconds: number, initialAudio: string | null = null) {
+  const [audioDataUrl, setAudioDataUrl] = useState<string | null>(initialAudio);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);

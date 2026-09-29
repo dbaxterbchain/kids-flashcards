@@ -1,0 +1,93 @@
+.card-preview {
+  position: relative;
+  width: 120px;
+  height: 150px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.card-preview--back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  text-align: center;
+  background: linear-gradient(135deg, #ffd166, #ff7eb6);
+  color: #1f1f1f;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.card-preview--back.is-empty {
+  color: rgba(31, 31, 31, 0.4);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Scoped under .swatches so these win over MUI's ButtonBase reset. */
+.swatches .swatch {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.15);
+  cursor: pointer;
+}
+
+.swatches .swatch.is-selected {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.swatches .swatch--default {
+  background: linear-gradient(135deg, #74e0d5, #7e8bff);
+}
+
+.swatches .swatch--custom {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: conic-gradient(#ef4444, #facc15, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444);
+  filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.6));
+}
+
+.swatches .swatch--custom:focus-within {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.swatches .swatch--custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d32f2f;
+  animation: recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-dot {
+    animation: none;
+  }
+}

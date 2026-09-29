@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { avatarColor, buildOptions, hashString, promptSideFor } from '../flashcards/practice';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
+import { CardFront } from './CardFront';
 import { Confetti } from './Confetti';
 import { Flashcard } from './Flashcard';
 import './PracticeSession.css';
@@ -25,8 +26,6 @@ type PracticeSessionProps = {
   onExit: () => void;
   error?: string | null;
 };
-
-const noop = () => undefined;
 
 const summaryHeadline = (correct: number, total: number) => {
   const ratio = total > 0 ? correct / total : 0;
@@ -181,7 +180,7 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
         <>
           <Stack spacing={1} alignItems="center">
             <Typography variant="subtitle1" component="p" color="text.secondary" fontWeight={700}>
-              {side === 'find-picture' ? 'Find the picture for' : 'What is this?'}
+              {side === 'find-picture' ? 'Find' : 'What is this?'}
             </Typography>
             <Box sx={{ width: '100%', maxWidth: 340 }}>
               <Flashcard
@@ -190,10 +189,6 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
                 className="flashcard--practice"
                 isFlipped={side === 'find-picture' ? !solved : solved}
                 disableFlip
-                showActions={false}
-                playAudioOnFlip={false}
-                onEdit={noop}
-                onDelete={noop}
               />
             </Box>
             {(side === 'find-picture' || solved) && (
@@ -239,9 +234,8 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
                     aria-label={option.name}
                     aria-disabled={locked}
                     tabIndex={locked ? -1 : 0}
-                    sx={{ bgcolor: option.backgroundColor || '#f8fafc' }}
                   >
-                    {option.imageUrl && <img src={option.imageUrl} alt="" />}
+                    <CardFront card={option} alt="" />
                     {isAnswer && (
                       <span className="practice-badge practice-badge--correct">
                         <CheckIcon />

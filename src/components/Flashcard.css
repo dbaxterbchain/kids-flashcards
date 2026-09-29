@@ -37,47 +37,37 @@
   border-radius: 18px;
 }
 
-.flashcard-front {
-  background: linear-gradient(135deg, #74e0d5, #7e8bff);
-}
-
-.flashcard-front img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
 .flashcard-back {
   background: linear-gradient(135deg, #ffd166, #ff7eb6);
   transform: rotateY(180deg);
   color: #1f1f1f;
-  font-size: 1.8rem;
-  font-weight: 700;
   text-align: center;
   padding: 1rem;
   letter-spacing: 0.02em;
+  /* Lets the word scale with the card, whatever size the card is shown at. */
+  container-type: size;
 }
 
-.flashcard-back p {
+.flashcard-name {
   margin: 0;
+  font-size: 1.8rem;
+  font-size: clamp(1.2rem, 13cqi, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
-.audio-controls {
-  margin-top: 1rem;
-    position: absolute;
-    bottom: 10px;
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-    flex-direction: row;
-    justify-content: flex-end;
+.flashcard-speak {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
 }
 
-.audio-hint {
-  font-size: 0.9rem;
-  color: #0f172a;
-  opacity: 0.8;
+/* Cards in a grid of tiles size themselves from their width instead of a fixed height. */
+.flashcard.flashcard--tile {
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 4 / 5;
 }
 
 .flashcard-actions {
