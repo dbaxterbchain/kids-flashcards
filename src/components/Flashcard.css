@@ -84,5 +84,12 @@
   display: flex;
   gap: 0.35rem;
   z-index: 2;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* The buttons belong to the front of the card; hide them (and take them out of tab order) on the back. */
+.flashcard.flipped .flashcard-actions {
+  opacity: 0;
+  visibility: hidden;
 }
 

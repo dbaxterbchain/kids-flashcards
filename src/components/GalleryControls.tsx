@@ -79,7 +79,7 @@ export function GalleryControls({
           <Switch
             checked={showActions}
             onChange={(event) => onToggleActions(event.target.checked)}
-            inputProps={{ 'aria-label': 'Toggle card action buttons' }}
+            slotProps={{ input: { 'aria-label': 'Toggle card action buttons' } }}
           />
         </Stack>
       </Stack>

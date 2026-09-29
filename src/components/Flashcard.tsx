@@ -143,7 +143,6 @@ export function Flashcard({
           direction="row"
           spacing={0.5}
           className="flashcard-actions"
-          aria-hidden={isFlipped}
           sx={{ position: 'absolute', top: 8, right: 8 }}
         >
           <IconButton
@@ -152,7 +151,7 @@ export function Flashcard({
               event.stopPropagation();
               onEdit();
             }}
-            aria-label="Edit card"
+            aria-label={`Edit ${card.name}`}
           >
             <EditIcon fontSize="small" />
           </IconButton>
@@ -163,7 +162,7 @@ export function Flashcard({
               event.stopPropagation();
               onDelete();
             }}
-            aria-label="Delete card"
+            aria-label={`Delete ${card.name}`}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
@@ -185,5 +184,13 @@ const StyledCard = styled(Card)(({ theme }) => ({
     borderRadius: 18,
     boxShadow: theme.shadows[4],
     background: 'transparent',
+  },
+  // A light backing keeps the buttons visible on dark or busy card fronts.
+  '.flashcard-actions .MuiIconButton-root': {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    boxShadow: theme.shadows[1],
+    '&:hover': {
+      backgroundColor: '#ffffff',
+    },
   },
 }));

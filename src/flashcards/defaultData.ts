@@ -24,14 +24,35 @@ const numberNameInEnglish = (numberToConvert: number) => {
   return numbersToWords[numberToConvert];
 };
 
+// The gallery lists newest cards first, so each deck counts its timestamps down to show up in
+// reading order: Numbers 0-10, then Shapes, then Colors.
 const timestampSeed = Date.now();
+
+// SVGs shown through <img> can't load web fonts like Baloo 2, so stick to rounded system fonts.
+const SVG_FONT_STACK =
+  "ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+const numberPalette = [
+  '#e2e8f0',
+  '#fca5a5',
+  '#fdba74',
+  '#fde047',
+  '#bef264',
+  '#86efac',
+  '#5eead4',
+  '#7dd3fc',
+  '#a5b4fc',
+  '#d8b4fe',
+  '#f9a8d4',
+];
 
 function buildNumberCards(baseTimestamp: number): FlashcardData[] {
   return Array.from({ length: 11 }, (_, num) => ({
     id: `number-${num}`,
     name: numberNameInEnglish(num),
-    imageUrl: buildSvgCard(String(num), '#ffb347', '#7d7aff'),
-    createdAt: baseTimestamp + 200 + num,
+    imageUrl: buildNumberCard(num),
+    backgroundColor: numberPalette[num],
+    createdAt: baseTimestamp + 300 - num,
     setIds: ['numbers'],
   }));
 }
@@ -63,7 +84,7 @@ function buildShapeCards(baseTimestamp: number): FlashcardData[] {
     id: `shape-${shape.id}`,
     name: shape.name,
     imageUrl: buildIllustratedCard(shape.build(palette[index % palette.length], stroke), shape.height ? shape.height : 0),
-    createdAt: baseTimestamp + 400 + index,
+    createdAt: baseTimestamp + 200 - index,
     setIds: ['shapes'],
     backgroundColor: "#f8fafc"
   }));
@@ -94,7 +115,7 @@ function buildColorCards(baseTimestamp: number): FlashcardData[] {
     name: color.name,
     imageUrl: '',
     backgroundColor: color.hex,
-    createdAt: baseTimestamp + 600 + index,
+    createdAt: baseTimestamp + 100 - index,
     setIds: ['colors'],
   }));
 }
@@ -105,17 +126,22 @@ export const defaultCards: FlashcardData[] = [
   ...buildColorCards(timestampSeed),
 ];
 
-export function buildSvgCard(label: string, startColor: string, endColor: string) {
+// A big numeral over a ten-frame (two rows of five dots) so kids can count the amount too.
+// The background is transparent so the card's background color fills the whole face.
+export function buildNumberCard(value: number) {
+  const ink = '#0f172a';
+  const dots = Array.from({ length: 10 }, (_, index) => {
+    const cx = 70 + (index % 5) * 40;
+    const cy = 207 + Math.floor(index / 5) * 40;
+    return index < value
+      ? `<circle cx="${cx}" cy="${cy}" r="14" fill="${ink}" />`
+      : `<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="${ink}" stroke-opacity="0.25" stroke-width="3" />`;
+  }).join('');
   const encoded = encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="260">
-      <defs>
-        <linearGradient id="grad" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stop-color="${startColor}" />
-          <stop offset="100%" stop-color="${endColor}" />
-        </linearGradient>
-      </defs>
-      <rect width="400" height="260" rx="28" fill="url(#grad)" />
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#1f1f1f" font-family="'Baloo 2', 'Comic Sans MS', cursive" font-size="64" font-weight="800">${label}</text>
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+      <text x="150" y="100" dominant-baseline="central" text-anchor="middle" fill="${ink}" font-family="${SVG_FONT_STACK}" font-size="150" font-weight="800">${value}</text>
+      <rect x="45" y="182" width="210" height="90" rx="18" fill="#ffffff" fill-opacity="0.6" />
+      ${dots}
     </svg>
   `);
   return `data:image/svg+xml,${encoded}`;
