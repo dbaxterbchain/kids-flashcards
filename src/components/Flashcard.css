@@ -51,13 +51,14 @@
 .flashcard-name {
   margin: 0;
   font-size: 1.8rem;
-  font-size: clamp(1.2rem, 13cqi, 2.6rem);
+  font-size: clamp(1.2rem, 16cqi, 2.6rem);
   font-weight: 700;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
-.flashcard-speak {
+/* Scoped under .flashcard-back so it wins over IconButton's own position: relative. */
+.flashcard-back .flashcard-speak {
   position: absolute;
   right: 10px;
   bottom: 10px;

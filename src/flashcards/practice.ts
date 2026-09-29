@@ -32,6 +32,12 @@ export const AGE_PRESETS = [
   settings: Pick<PracticeSettings, 'choiceCount' | 'promptMode' | 'roundSize'>;
 }[];
 
+export const PROMPT_MODE_LABELS: Record<PromptMode, string> = {
+  'find-picture': 'Find the picture',
+  'name-picture': 'Name the picture',
+  mix: 'Mixed questions',
+};
+
 export function defaultPracticeSettings(): PracticeSettings {
   return { setIds: null, ...AGE_PRESETS[0].settings, readAloud: true, soundEffects: true };
 }

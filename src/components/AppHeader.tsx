@@ -1,4 +1,5 @@
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -8,19 +9,23 @@ import { ReactNode } from 'react';
 import { useLocalStorageState } from '../hooks/useLocalStorage';
 
 const introSteps: { icon: ReactNode; text: string }[] = [
-  { icon: <TouchAppIcon />, text: 'Tap a card to flip it over and see the word on the back.' },
+  { icon: <TouchAppIcon />, text: 'Tap a set, then tap a card to flip it over and hear the word.' },
   {
     icon: <AddPhotoAlternateIcon />,
-    text: 'Tap New card to add your own photos (family, pets, favorite things) and record your voice saying the word.',
+    text: 'Grown-ups: tap the lock to add cards with your own photos (family, pets, favorite things) and your voice.',
   },
   {
     icon: <EmojiEventsIcon />,
     text: 'Add each child under Practice for a matching game set up for their age. Each child keeps their own progress.',
   },
-  { icon: <LockOutlinedIcon />, text: 'Your cards stay on this device and work offline. Nothing is uploaded.' },
+  { icon: <CloudOffIcon />, text: 'Your cards stay on this device and work offline. Nothing is uploaded.' },
 ];
 
-export function AppHeader() {
+type AppHeaderProps = {
+  onOpenGrownUps: () => void;
+};
+
+export function AppHeader({ onOpenGrownUps }: AppHeaderProps) {
   const [introDismissed, setIntroDismissed] = useLocalStorageState('kids-flashcards:intro-dismissed', false);
   const introOpen = !introDismissed;
 
@@ -41,7 +46,8 @@ export function AppHeader() {
           component="img"
           src="/icons/icon-192.png"
           alt=""
-          sx={{ width: { xs: 44, sm: 52 }, height: { xs: 44, sm: 52 }, borderRadius: 2, flexShrink: 0, boxShadow: 2 }}
+          // Hidden on phones so the title fits on one line next to the buttons.
+          sx={{ display: { xs: 'none', sm: 'block' }, width: 52, height: 52, borderRadius: 2, flexShrink: 0, boxShadow: 2 }}
         />
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Typography
@@ -71,6 +77,24 @@ export function AppHeader() {
         >
           <HelpOutlineIcon />
         </IconButton>
+        <Button
+          variant="outlined"
+          onClick={onOpenGrownUps}
+          aria-label="Grown-ups"
+          startIcon={<LockOutlinedIcon />}
+          sx={{
+            flexShrink: 0,
+            minWidth: { xs: 44, sm: 64 },
+            px: { xs: 1.25, sm: 2 },
+            bgcolor: 'rgba(255,255,255,0.6)',
+            '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 }, ml: { xs: 0, sm: -0.5 } },
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+          }}
+        >
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            Grown-ups
+          </Box>
+        </Button>
       </Box>
 
       <Collapse in={introOpen}>

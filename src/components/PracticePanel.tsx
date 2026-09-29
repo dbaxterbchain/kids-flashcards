@@ -3,8 +3,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import TuneIcon from '@mui/icons-material/Tune';
 import { Avatar, Box, Button, Chip, IconButton, Stack, Typography } from '@mui/material';
-import { avatarColor } from '../flashcards/practice';
-import { ChildProfile, PromptMode } from '../flashcards/types';
+import { avatarColor, PROMPT_MODE_LABELS } from '../flashcards/practice';
+import { ChildProfile } from '../flashcards/types';
 
 type PracticePanelProps = {
   profiles: ChildProfile[];
@@ -19,15 +19,10 @@ type PracticePanelProps = {
   setLabel: string;
   onSelectProfile: (id: string) => void;
   onAddProfile: () => void;
-  onEditProfile: () => void;
+  /** Opens the selected child's settings; the button is hidden when not given. */
+  onEditProfile?: () => void;
   onStart: () => void;
   error?: string | null;
-};
-
-const promptModeLabels: Record<PromptMode, string> = {
-  'find-picture': 'Find the picture',
-  'name-picture': 'Name the picture',
-  mix: 'Mixed questions',
 };
 
 export function PracticePanel({
@@ -134,14 +129,16 @@ export function PracticePanel({
                   {status}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" component="p" noWrap>
-                  {promptModeLabels[activeProfile.settings.promptMode]} · {activeProfile.settings.choiceCount} choices ·{' '}
+                  {PROMPT_MODE_LABELS[activeProfile.settings.promptMode]} · {activeProfile.settings.choiceCount} choices ·{' '}
                   {setLabel}
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                <IconButton aria-label={`Practice settings for ${name}`} onClick={onEditProfile}>
-                  <TuneIcon />
-                </IconButton>
+                {onEditProfile && (
+                  <IconButton aria-label={`Practice settings for ${name}`} onClick={onEditProfile}>
+                    <TuneIcon />
+                  </IconButton>
+                )}
                 <Button
                   variant="contained"
                   size="large"

@@ -4,8 +4,9 @@ A kid-friendly React + TypeScript web app for building, flipping, and hearing pe
 
 ## Features
 - Create, edit, and delete cards with a photo (taken in the app or chosen from your library, and shrunk automatically), a solid color, or text such as "2 + 3" on the front.
-- Optional audio on each card (record in-app or upload); audio plays on flip with mute/play controls.
-- Organize cards into sets, quickly show/hide sets, and toggle edit/delete buttons for kid-safe browsing.
+- Optional audio on each card (record in-app or upload). It plays when the card flips; cards without a recording are read aloud by the device's voice (this can be switched off).
+- A kid-friendly Play mode: big set tiles, two cards per row on phones, and the word said aloud when a card flips.
+- A Grown-ups area behind a simple parent gate (a multiplication question) for adding, editing, and deleting cards, managing sets (rename, delete, hide from kids), and setting up each child. Deleting a card can be undone.
 - Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
 - Practice for each child: a profile per child (name, animal avatar, age-based settings) with separate spaced-repetition progress.
 - Audio-first practice game for pre-readers: words are read aloud (your recording, or the device's voice), wrong taps get another try, and rounds end with a celebration.
@@ -41,21 +42,22 @@ npm run lint
 
 ## Usage
 1. Start the dev server and open the app.
-2. Click **New card** to open the card form.
-3. Choose the front (a photo, a color, or text), type the word for the back, and optionally record your voice saying it (up to 10s).
-4. Add the card to one or more sets, or create a new set on the fly.
-5. Flip cards by clicking or pressing Space/Enter; use the gallery controls to show/hide sets and toggle action buttons.
-6. Under **Practice**, add each child, pick who's playing, and press **Start**. The settings button next to Start changes their question type, number of choices, round length, and sets.
+2. Kids tap a set, then tap cards to flip them (Space/Enter works too).
+3. Grown-ups tap the lock button and answer the question to open the Grown-ups area.
+4. Under **Cards**, click **New card**: choose the front (a photo, a color, or text), type the word for the back, optionally record your voice saying it (up to 10s), and pick its sets.
+5. Under **Sets**, rename or delete sets, or switch a set off to hide it from kids.
+6. Under **Children**, add each child and choose their question type, number of choices, round length, and sets.
+7. Back in Play mode, pick who's practicing and press **Start**, or open a set and press **Practice** to practice just that set.
 
 ## Project Structure
 ```
 src/
   App.tsx
-  audio/            // Read-aloud and sound effects for practice
-  components/       // Header, card form, grid, controls, practice, child settings, PWA prompts
+  audio/            // Read-aloud and sound effects
+  components/       // Header, card editor, set tiles, card grid, practice, Grown-ups area, child settings, PWA prompts
   db/               // IndexedDB helpers for cards/sets and for children/progress
   flashcards/       // Types, storage, defaults, spaced repetition, practice rounds
-  hooks/            // Audio recorder, child profiles, PWA hooks
+  hooks/            // Card library, child profiles, routing, audio recorder, PWA hooks
   styles/           // Global styles
 public/
   manifest.webmanifest, icons, assets
