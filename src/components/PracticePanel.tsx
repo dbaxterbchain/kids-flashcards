@@ -1,59 +1,57 @@
-import { Box, Button, Chip, LinearProgress, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
-import { FlashcardData } from '../flashcards/types';
-import { Flashcard } from './Flashcard';
-import './PracticePanel.css';
+import AddIcon from '@mui/icons-material/Add';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import TuneIcon from '@mui/icons-material/Tune';
+import { Avatar, Box, Button, Chip, IconButton, Stack, Typography } from '@mui/material';
+import { avatarColor, PROMPT_MODE_LABELS } from '../flashcards/practice';
+import { ChildProfile } from '../flashcards/types';
 
 type PracticePanelProps = {
-  enabled: boolean;
-  hasDue: boolean;
-  dueCount: number;
-  totalCount: number;
-  nextDueLabel?: string | null;
-  card: FlashcardData | null;
-  isFlipped: boolean;
-  promptSide: 'image' | 'word';
-  promptMode: 'image' | 'word' | 'alternate';
-  onPromptModeChange: (mode: 'image' | 'word' | 'alternate') => void;
-  options: FlashcardData[];
-  selectedOptionId?: string | null;
-  locked: boolean;
-  feedback: 'correct' | 'incorrect' | null;
+  profiles: ChildProfile[];
+  activeProfile: ChildProfile | null;
+  loading: boolean;
+  /** Cards due now in the active child's sets. */
+  readyCount: number;
+  /** Cards in the active child's sets. */
+  poolSize: number;
   canStart: boolean;
-  selectedSetLabel?: string | null;
-  progressValue?: number | null;
+  nextReviewLabel: string | null;
+  setLabel: string;
+  onSelectProfile: (id: string) => void;
+  onAddProfile: () => void;
+  /** Opens the selected child's settings; the button is hidden when not given. */
+  onEditProfile?: () => void;
   onStart: () => void;
-  onExit: () => void;
-  onSelectOption: (id: string) => void;
-  progressLabel?: string | null;
   error?: string | null;
 };
 
 export function PracticePanel({
-  enabled,
-  hasDue,
-  dueCount,
-  totalCount,
-  nextDueLabel,
-  card,
-  isFlipped,
-  promptSide,
-  promptMode,
-  onPromptModeChange,
-  options,
-  selectedOptionId,
-  locked,
-  feedback,
+  profiles,
+  activeProfile,
+  loading,
+  readyCount,
+  poolSize,
   canStart,
-  selectedSetLabel,
-  progressValue,
+  nextReviewLabel,
+  setLabel,
+  onSelectProfile,
+  onAddProfile,
+  onEditProfile,
   onStart,
-  onExit,
-  onSelectOption,
-  progressLabel,
   error,
 }: PracticePanelProps) {
+  const name = activeProfile?.name ?? '';
+  const status =
+    poolSize < 2
+      ? `Add at least 2 cards to ${name}'s sets to start.`
+      : readyCount > 0
+        ? `${readyCount} card${readyCount === 1 ? '' : 's'} ready for ${name}`
+        : `${name} is all caught up!${nextReviewLabel ? ` More cards in ${nextReviewLabel}.` : ''}`;
+
   return (
     <Box
+      component="section"
+      aria-labelledby="practice-heading"
       sx={{
         border: '1px solid',
         borderColor: 'divider',
@@ -63,173 +61,101 @@ export function PracticePanel({
         mb: 3,
       }}
     >
-      <Stack spacing={2}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} justifyContent="space-between">
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Practice mode
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {dueCount > 0 ? `${dueCount} card${dueCount === 1 ? '' : 's'} due now` : 'No cards due right now.'}
-              {nextDueLabel ? ` Next up in ${nextDueLabel}.` : ''}
-            </Typography>
-            {selectedSetLabel && (
-              <Typography variant="caption" color="text.secondary">
-                Practice sets: {selectedSetLabel}
-              </Typography>
-            )}
-          </Stack>
-          {enabled ? (
-            <Button variant="outlined" onClick={onExit}>
-              Exit practice
-            </Button>
-          ) : (
-            <Button variant="contained" onClick={onStart} disabled={!canStart}>
-              Start practice
-            </Button>
-          )}
-        </Stack>
+      <Stack spacing={1.5}>
+        <Typography id="practice-heading" variant="subtitle1" component="h2" fontWeight={700}>
+          Practice
+        </Typography>
 
-        {enabled ? (
+        {loading ? (
+          <Typography variant="body2" color="text.secondary">
+            Loading…
+          </Typography>
+        ) : profiles.length === 0 || !activeProfile ? (
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            justifyContent="space-between"
+          >
+            <Typography variant="body2" color="text.secondary">
+              Add your child to play a matching game set up for their age. Each child keeps their own progress.
+            </Typography>
+            <Button variant="contained" startIcon={<PersonAddIcon />} onClick={onAddProfile} sx={{ flexShrink: 0 }}>
+              Add child
+            </Button>
+          </Stack>
+        ) : (
           <>
-            {!hasDue && totalCount > 0 && (
-              <Chip label="No cards due — showing upcoming cards" color="info" variant="outlined" />
-            )}
-            {progressValue != null && (
-              <LinearProgress
-                variant="determinate"
-                value={progressValue}
-                sx={{ height: 8, borderRadius: 999, bgcolor: 'action.hover' }}
+            <Stack direction="row" flexWrap="wrap" gap={1} role="radiogroup" aria-label="Who's practicing?">
+              {profiles.map((profile) => {
+                const selected = profile.id === activeProfile.id;
+                return (
+                  <Chip
+                    key={profile.id}
+                    role="radio"
+                    aria-checked={selected}
+                    avatar={<Avatar>{profile.avatar}</Avatar>}
+                    label={profile.name}
+                    color={selected ? 'primary' : 'default'}
+                    variant={selected ? 'filled' : 'outlined'}
+                    onClick={() => onSelectProfile(profile.id)}
+                    sx={{
+                      height: 40,
+                      borderRadius: 999,
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      '& .MuiChip-avatar': {
+                        width: 30,
+                        height: 30,
+                        fontSize: '1.1rem',
+                        bgcolor: avatarColor(profile.avatar),
+                      },
+                    }}
+                  />
+                );
+              })}
+              <Chip
+                icon={<AddIcon />}
+                label="Add child"
+                variant="outlined"
+                onClick={onAddProfile}
+                sx={{ height: 40, borderRadius: 999, borderStyle: 'dashed' }}
               />
-            )}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                {promptSide === 'image' ? 'Pick the matching word.' : 'Pick the matching picture.'}
-              </Typography>
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={promptMode}
-                onChange={(_, value) => value && onPromptModeChange(value)}
-                aria-label="Practice prompt mode"
-                disabled={locked}
-              >
-                <ToggleButton value="image" aria-label="Image prompt">
-                  Image
-                </ToggleButton>
-                <ToggleButton value="word" aria-label="Word prompt">
-                  Word
-                </ToggleButton>
-                <ToggleButton value="alternate" aria-label="Alternate prompt">
-                  Alternate
-                </ToggleButton>
-              </ToggleButtonGroup>
-              {progressLabel && (
-                <Typography variant="caption" color="text.secondary">
-                  {progressLabel}
-                </Typography>
-              )}
             </Stack>
 
-            {card ? (
-              <>
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                  <Box sx={{ width: '100%', maxWidth: 360, position: 'relative' }}>
-                  <Flashcard
-                    card={card}
-                    showActions={false}
-                    onEdit={() => undefined}
-                    onDelete={() => undefined}
-                    isFlipped={isFlipped}
-                    disableFlip
-                  />
-                  {feedback && (
-                    <div className={`practice-feedback ${feedback === 'correct' ? 'success' : 'fail'}`}>
-                      {feedback === 'correct' ? 'Correct!' : 'Not quite'}
-                    </div>
-                  )}
-                  </Box>
-                </Box>
-                <Box
-                  sx={{
-                    width: '100%',
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
-                    gap: 1.5,
-                  }}
-                >
-                  {options.map((option) => {
-                    const isCorrect = option.id === card.id;
-                    const isSelected = selectedOptionId === option.id;
-                    const showCorrect = feedback && isCorrect;
-                    const showIncorrect = feedback && isSelected && !isCorrect;
-                    return (
-                      <Button
-                        key={option.id}
-                        variant={showCorrect ? 'contained' : 'outlined'}
-                        color={showCorrect ? 'success' : showIncorrect ? 'error' : 'primary'}
-                        onClick={() => onSelectOption(option.id)}
-                        disabled={locked}
-                        sx={{
-                          width: '100%',
-                          minWidth: 0,
-                          px: 2,
-                          py: 1,
-                          fontSize: '1rem',
-                          borderColor: showIncorrect ? 'error.main' : undefined,
-                        }}
-                        aria-label={
-                          promptSide === 'image'
-                            ? `Option ${option.name}`
-                            : `Option image for ${option.name}`
-                        }
-                      >
-                        {promptSide === 'image' ? (
-                          option.name
-                        ) : (
-                          <Box
-                            sx={{
-                              width: 96,
-                              height: 72,
-                              borderRadius: 1,
-                              overflow: 'hidden',
-                              bgcolor: option.backgroundColor || 'background.default',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            {option.imageUrl ? (
-                              <img
-                                src={option.imageUrl}
-                                alt=""
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              />
-                            ) : null}
-                          </Box>
-                        )}
-                      </Button>
-                    );
-                  })}
-                </Box>
-                <Typography variant="caption" color="text.secondary" textAlign="center">
-                  Tap an option. We will flip the card, show feedback, then move on.
+            <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {status}
                 </Typography>
-              </>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                No cards to practice yet. Create a card or select a set.
-              </Typography>
-            )}
-            {error && (
-              <Typography variant="body2" color="error" textAlign="center">
-                {error}
-              </Typography>
-            )}
+                <Typography variant="caption" color="text.secondary" component="p" noWrap>
+                  {PROMPT_MODE_LABELS[activeProfile.settings.promptMode]} · {activeProfile.settings.choiceCount} choices ·{' '}
+                  {setLabel}
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+                {onEditProfile && (
+                  <IconButton aria-label={`Practice settings for ${name}`} onClick={onEditProfile}>
+                    <TuneIcon />
+                  </IconButton>
+                )}
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={onStart}
+                  disabled={!canStart}
+                >
+                  Start
+                </Button>
+              </Stack>
+            </Stack>
           </>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            Practice the cards from the sets you have visible with a quick multiple-choice check.
+        )}
+
+        {error && (
+          <Typography variant="body2" color="error">
+            {error}
           </Typography>
         )}
       </Stack>

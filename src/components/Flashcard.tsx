@@ -1,38 +1,39 @@
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import MicOffIcon from '@mui/icons-material/MicOff';
-import MicOutlinedIcon from '@mui/icons-material/MicOutlined';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { Card, IconButton, Stack, Typography, styled } from '@mui/material';
-import { KeyboardEvent, MouseEvent, useEffect, useRef, useState } from 'react';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import { Card, IconButton, Stack, styled } from '@mui/material';
+import { KeyboardEvent, useState } from 'react';
+import { speakCard } from '../audio/sound';
 import { FlashcardData } from '../flashcards/types';
+import { CardFront } from './CardFront';
 import './Flashcard.css';
 
 type FlashcardProps = {
   card: FlashcardData;
   showActions?: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   isFlipped?: boolean;
   disableFlip?: boolean;
   onFlipChange?: (value: boolean) => void;
+  /** Say the word (the card's recording, or the device's voice) when the card is flipped over. */
+  speakOnFlip?: boolean;
+  className?: string;
 };
 
 export function Flashcard({
   card,
-  showActions = true,
+  showActions = false,
   onEdit,
   onDelete,
   isFlipped: isFlippedProp,
   disableFlip = false,
   onFlipChange,
+  speakOnFlip = false,
+  className,
 }: FlashcardProps) {
   const [isFlippedState, setIsFlippedState] = useState(false);
   const isFlipped = isFlippedProp ?? isFlippedState;
-  const [muted, setMuted] = useState(false);
-  const [playError, setPlayError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const frontStyle = card.backgroundColor ? { background: card.backgroundColor } : undefined;
 
   const setFlipped = (value: boolean) => {
     if (isFlippedProp === undefined) {
@@ -44,96 +45,47 @@ export function Flashcard({
   const toggleFlip = () => {
     if (disableFlip) return;
     setFlipped(!isFlipped);
+    // Speak from the tap itself; browsers (iOS especially) block sound that starts later.
+    if (!isFlipped && speakOnFlip) speakCard(card);
   };
+
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       toggleFlip();
     }
   };
 
-  useEffect(() => {
-    if (!card.audioUrl) return undefined;
-    const audio = new Audio(card.audioUrl);
-    audio.preload = 'auto';
-    audioRef.current = audio;
-    return () => {
-      audio.pause();
-      audioRef.current = null;
-    };
-  }, [card.audioUrl]);
-
-  useEffect(() => {
-    if (!isFlipped || muted || !audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    audioRef.current
-      .play()
-      .then(() => setPlayError(null))
-      .catch((error) => {
-        console.warn('Audio play blocked', error);
-        setPlayError('Tap play to hear audio');
-      });
-  }, [isFlipped, muted]);
-
-  const handleManualPlay = (event: MouseEvent) => {
-    event.stopPropagation();
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    audioRef.current
-      .play()
-      .then(() => setPlayError(null))
-      .catch((error) => {
-        console.warn('Audio play blocked', error);
-        setPlayError('Tap play to hear audio');
-      });
-  };
-
   return (
     <StyledCard
-      className={`flashcard ${isFlipped ? 'flipped' : ''}`}
+      className={['flashcard', isFlipped ? 'flipped' : '', className ?? ''].filter(Boolean).join(' ')}
       onClick={toggleFlip}
       onKeyDown={handleKey}
-      tabIndex={0}
-      role="button"
-      aria-pressed={isFlipped}
+      tabIndex={disableFlip ? -1 : 0}
+      role={disableFlip ? undefined : 'button'}
+      aria-pressed={disableFlip ? undefined : isFlipped}
       aria-label={`Flashcard for ${card.name}`}
       elevation={3}
     >
       <div className="flashcard-inner">
-        <div className="flashcard-face flashcard-front" style={frontStyle}>
-          {card.imageUrl && <img src={card.imageUrl} alt={card.name} loading="lazy" />}
+        <div className="flashcard-face flashcard-front">
+          <CardFront card={card} />
         </div>
         <div className="flashcard-face flashcard-back">
-          <Typography variant="h5" component="p" sx={{ mb: 1, textAlign: 'center' }}>
-            {card.name}
-          </Typography>
-          {card.audioUrl && (
-            <Stack
-              direction="row"
-              spacing={0.5}
-              alignItems="center"
-              justifyContent="center"
-              className="audio-controls"
+          <p className="flashcard-name">{card.name}</p>
+          {!disableFlip && (
+            <IconButton
+              className="flashcard-speak"
+              tabIndex={isFlipped ? 0 : -1}
+              onClick={(event) => {
+                event.stopPropagation();
+                speakCard(card);
+              }}
+              aria-label={`Hear ${card.name}`}
             >
-              <IconButton
-                size="small"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setMuted((current) => !current);
-                }}
-                aria-label={muted ? 'Unmute audio' : 'Mute audio'}
-              >
-                {muted ? <MicOffIcon fontSize="small" /> : <MicOutlinedIcon fontSize="small" />}
-              </IconButton>
-              <IconButton size="small" onClick={handleManualPlay} aria-label={`Play audio for ${card.name}`}>
-                <PlayArrowIcon fontSize="small" />
-              </IconButton>
-              {playError && (
-                <Typography variant="caption" color="text.secondary" className="audio-hint">
-                  {playError}
-                </Typography>
-              )}
-            </Stack>
+              <VolumeUpIcon />
+            </IconButton>
           )}
         </div>
       </div>
@@ -143,27 +95,24 @@ export function Flashcard({
           direction="row"
           spacing={0.5}
           className="flashcard-actions"
-          aria-hidden={isFlipped}
           sx={{ position: 'absolute', top: 8, right: 8 }}
         >
           <IconButton
-            size="small"
             onClick={(event) => {
               event.stopPropagation();
-              onEdit();
+              onEdit?.();
             }}
-            aria-label="Edit card"
+            aria-label={`Edit ${card.name}`}
           >
             <EditIcon fontSize="small" />
           </IconButton>
           <IconButton
-            size="small"
             color="error"
             onClick={(event) => {
               event.stopPropagation();
-              onDelete();
+              onDelete?.();
             }}
-            aria-label="Delete card"
+            aria-label={`Delete ${card.name}`}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
@@ -185,5 +134,13 @@ const StyledCard = styled(Card)(({ theme }) => ({
     borderRadius: 18,
     boxShadow: theme.shadows[4],
     background: 'transparent',
+  },
+  // A light backing keeps the buttons visible on dark or busy card fronts.
+  '.flashcard-actions .MuiIconButton-root, .flashcard-speak.MuiIconButton-root': {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    boxShadow: theme.shadows[1],
+    '&:hover': {
+      backgroundColor: '#ffffff',
+    },
   },
 }));

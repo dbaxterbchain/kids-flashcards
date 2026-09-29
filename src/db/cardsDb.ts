@@ -80,3 +80,8 @@ export async function putSet(set: FlashcardSet) {
   const store = await getSetStore('readwrite');
   await requestToPromise(store.put(set));
 }
+
+export async function deleteSet(id: string) {
+  const store = await getSetStore('readwrite');
+  await requestToPromise(store.delete(id));
+}
