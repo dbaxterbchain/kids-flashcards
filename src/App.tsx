@@ -12,9 +12,11 @@ import { PracticePanel } from './components/PracticePanel';
 import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
-import { defaultSets } from './flashcards/defaultData';
+import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
+import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
+import { STORAGE_KEYS } from './flashcards/storageKeys';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
 import { useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
@@ -23,6 +25,11 @@ import { useLocalStorageState } from './hooks/useLocalStorage';
 import { usePwa } from './hooks/usePwa';
 
 const ALL_CARDS_ID = 'all';
+
+const STARTER_CARD_IDS = new Set(defaultCards.map((card) => card.id));
+
+// How long before Grown-ups starts suggesting a fresh backup.
+const BACKUP_REMINDER_MS = 30 * 24 * 60 * 60 * 1000;
 
 const emptyStateSx = {
   p: 3,
@@ -65,8 +72,9 @@ export default function App() {
   const { cards, sets, loading } = library;
   const { route, navigate, goBack } = useHashRoute();
   // Sets hidden from kids. Hidden (rather than shown) ids are saved so new sets show up by default.
-  const [hiddenSetIds, setHiddenSetIds] = useLocalStorageState<string[]>('kids-flashcards:hidden-sets', []);
-  const [speakOnFlip, setSpeakOnFlip] = useLocalStorageState('kids-flashcards:speak-on-flip', true);
+  const [hiddenSetIds, setHiddenSetIds] = useLocalStorageState<string[]>(STORAGE_KEYS.hiddenSets, []);
+  const [speakOnFlip, setSpeakOnFlip] = useLocalStorageState(STORAGE_KEYS.speakOnFlip, true);
+  const [lastBackupAt, setLastBackupAt] = useLocalStorageState<number | null>(STORAGE_KEYS.lastBackupAt, null);
   const [parentUnlocked, setParentUnlocked] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [deletedCard, setDeletedCard] = useState<FlashcardData | null>(null);
@@ -152,6 +160,8 @@ export default function App() {
   }, [activeProfile, availableSets]);
   const roundCards = useMemo(() => cardsForIds(round?.cardIds ?? [], cards), [cards, round]);
   const roundPool = useMemo(() => cardsForIds(round?.poolIds ?? [], cards), [cards, round]);
+  const hasOwnContent = profiles.length > 0 || cards.some((card) => !STARTER_CARD_IDS.has(card.id));
+  const showBackupReminder = hasOwnContent && (lastBackupAt === null || Date.now() - lastBackupAt > BACKUP_REMINDER_MS);
   const defaultAvatar =
     AVATARS.find((avatar) => !profiles.some((profile) => profile.avatar === avatar.emoji))?.emoji ?? AVATARS[0].emoji;
 
@@ -225,6 +235,19 @@ export default function App() {
       console.error('Unable to restore starter cards', error);
       setNotice('Unable to bring back the starter cards right now.');
     }
+  };
+
+  const handleSaveBackup = async () => {
+    const result = await saveBackupFile(await createBackup({ hiddenSetIds, speakOnFlip }));
+    if (result !== 'cancelled') setLastBackupAt(Date.now());
+    return result;
+  };
+
+  const handleRestoreBackup = async (backup: Backup) => {
+    await restoreBackup(backup);
+    // Start fresh from the home screen so every part of the app reads the restored data.
+    window.history.replaceState(null, '', '#/');
+    window.location.reload();
   };
 
   const startPractice = (pool: FlashcardData[]) => {
@@ -309,6 +332,10 @@ export default function App() {
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}
           onRestoreStarters={handleRestoreStarters}
+          lastBackupAt={lastBackupAt}
+          showBackupReminder={showBackupReminder}
+          onSaveBackup={handleSaveBackup}
+          onRestoreBackup={handleRestoreBackup}
         />
       </>
     );

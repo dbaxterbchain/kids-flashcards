@@ -85,3 +85,20 @@ export async function deleteSet(id: string) {
   const store = await getSetStore('readwrite');
   await requestToPromise(store.delete(id));
 }
+
+/** Replaces every card and set in one transaction, so a failure leaves the old ones in place. */
+export async function replaceCardsAndSets(cards: FlashcardData[], sets: FlashcardSet[]) {
+  const db = await openDb();
+  const tx = db.transaction([STORE_NAME, SET_STORE], 'readwrite');
+  const cardStore = tx.objectStore(STORE_NAME);
+  const setStore = tx.objectStore(SET_STORE);
+  cardStore.clear();
+  setStore.clear();
+  cards.forEach((card) => cardStore.put(card));
+  sets.forEach((set) => setStore.put(set));
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}

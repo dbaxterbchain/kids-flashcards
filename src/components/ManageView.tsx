@@ -28,8 +28,10 @@ import {
   Typography,
 } from '@mui/material';
 import { FormEvent, useState } from 'react';
+import { Backup, SaveResult } from '../flashcards/backup';
 import { avatarColor, PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
+import { BackupSection } from './BackupSection';
 import { FlashcardGrid } from './FlashcardGrid';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
@@ -54,6 +56,11 @@ type ManageViewProps = {
   onEditChild: (profile: ChildProfile) => void;
   onSpeakOnFlipChange: (value: boolean) => void;
   onRestoreStarters: () => Promise<void>;
+  lastBackupAt: number | null;
+  /** True when there's something worth backing up and no recent backup. */
+  showBackupReminder: boolean;
+  onSaveBackup: () => Promise<SaveResult>;
+  onRestoreBackup: (backup: Backup) => Promise<void>;
 };
 
 const emptySx = {
@@ -74,6 +81,7 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 /** The parent-only area for changing cards, sets, children and settings. */
 export function ManageView(props: ManageViewProps) {
   const [tab, setTab] = useState<ManageTab>('cards');
+  const [savingBackup, setSavingBackup] = useState(false);
   const tabs: { value: ManageTab; label: string }[] = [
     { value: 'cards', label: 'Cards' },
     { value: 'sets', label: 'Sets' },
@@ -106,6 +114,34 @@ export function ManageView(props: ManageViewProps) {
           Done
         </Button>
       </Stack>
+
+      {props.showBackupReminder && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2, alignItems: 'center' }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={savingBackup}
+              onClick={async () => {
+                setSavingBackup(true);
+                try {
+                  await props.onSaveBackup();
+                } catch (error) {
+                  console.error('Unable to make a backup', error);
+                } finally {
+                  setSavingBackup(false);
+                }
+              }}
+            >
+              Save a backup
+            </Button>
+          }
+        >
+          Your cards and recordings are only on this device. Save a backup so you don&apos;t lose them.
+        </Alert>
+      )}
 
       <Tabs
         value={tab}
@@ -394,11 +430,21 @@ function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProp
   );
 }
 
-function SettingsTab({ speakOnFlip, missingStarterCount, onSpeakOnFlipChange, onRestoreStarters }: ManageViewProps) {
+function SettingsTab({
+  speakOnFlip,
+  missingStarterCount,
+  onSpeakOnFlipChange,
+  onRestoreStarters,
+  lastBackupAt,
+  onSaveBackup,
+  onRestoreBackup,
+}: ManageViewProps) {
   const [restoring, setRestoring] = useState(false);
 
   return (
     <Stack spacing={3}>
+      <BackupSection lastBackupAt={lastBackupAt} onSave={onSaveBackup} onRestore={onRestoreBackup} />
+
       <Box>
         <FormControlLabel
           control={<Switch checked={speakOnFlip} onChange={(event) => onSpeakOnFlipChange(event.target.checked)} />}
@@ -438,9 +484,6 @@ function SettingsTab({ speakOnFlip, missingStarterCount, onSpeakOnFlipChange, on
         )}
       </Stack>
 
-      <Typography variant="body2" color="text.secondary">
-        Cards, recordings and each child&apos;s progress are saved on this device only.
-      </Typography>
     </Stack>
   );
 }
