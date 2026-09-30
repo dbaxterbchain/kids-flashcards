@@ -117,3 +117,26 @@ export async function prepareCardImage(file: File): Promise<PreparedImage> {
     loaded.release();
   }
 }
+
+const AVATAR_SIZE = 256;
+
+/** Reads a picture for a child's avatar: cropped to a centered square and kept small. */
+export async function prepareAvatarImage(file: File): Promise<string> {
+  const { image, release } = await loadImage(file);
+  try {
+    const side = Math.min(image.naturalWidth, image.naturalHeight);
+    if (!side) throw new Error('That picture has no size');
+    const size = Math.min(AVATAR_SIZE, side);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Drawing is not available');
+    const left = (image.naturalWidth - side) / 2;
+    const top = (image.naturalHeight - side) / 2;
+    context.drawImage(image, left, top, side, side, 0, 0, size, size);
+    return encodeCanvas(canvas, file.type);
+  } finally {
+    release();
+  }
+}

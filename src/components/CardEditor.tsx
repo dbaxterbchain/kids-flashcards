@@ -9,6 +9,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import {
   Alert,
   Box,
@@ -20,6 +21,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  MenuItem,
   Stack,
   TextField,
   ToggleButton,
@@ -31,6 +33,8 @@ import {
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { speakCard } from '../audio/sound';
 import { fileToDataUrl, prepareCardImage } from '../flashcards/fileUtils';
+import { newId } from '../flashcards/ids';
+import { languageLabel, READ_ALOUD_LANGUAGES } from '../flashcards/languages';
 import { FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS } from '../flashcards/types';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { CardFront } from './CardFront';
@@ -72,8 +76,6 @@ const COLORS = [
 
 // Longer clips are almost certainly not a single spoken word.
 const MAX_AUDIO_FILE_BYTES = 2 * 1024 * 1024;
-
-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 const frontTypeOf = (card: FlashcardData | null): FrontType => {
   if (!card) return 'picture';
@@ -138,6 +140,8 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
   const [imageUrl, setImageUrl] = useState(card?.imageUrl ?? '');
   const [frontText, setFrontText] = useState(card?.frontText ?? '');
   const [backgroundColor, setBackgroundColor] = useState(card?.backgroundColor ?? '');
+  // '' reads the word in the device's own language.
+  const [lang, setLang] = useState(card?.lang ?? '');
   // True while the background was picked automatically from the picture, so a new picture can replace it.
   const [backgroundIsAuto, setBackgroundIsAuto] = useState(false);
   const [setIds, setSetIds] = useState<string[]>(card?.setIds ?? initialSetIds ?? []);
@@ -263,6 +267,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
         frontText: frontType === 'text' ? frontText.trim() : undefined,
         backgroundColor: backgroundColor || undefined,
         audioUrl: audioDataUrl ?? undefined,
+        lang: lang || undefined,
         setIds,
         createdAt: card?.createdAt ?? Date.now(),
         // Kept until it's moved to the first child's progress.
@@ -410,7 +415,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
                     <Button
                       variant="contained"
                       startIcon={<PlayArrowIcon />}
-                      onClick={() => speakCard({ name: name || 'word', audioUrl: audioDataUrl })}
+                      onClick={() => speakCard({ name: name || 'word', audioUrl: audioDataUrl, lang: lang || undefined })}
                     >
                       Play
                     </Button>
@@ -438,6 +443,36 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
                 the device reads the word aloud.
               </Typography>
               {recordingError && <Alert severity="error">{recordingError}</Alert>}
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ pt: 1 }}>
+                <TextField
+                  select
+                  size="small"
+                  label="Device reads it in"
+                  value={lang}
+                  onChange={(event) => setLang(event.target.value)}
+                  sx={{ minWidth: 220 }}
+                  slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+                >
+                  <MenuItem value="">This device&apos;s language</MenuItem>
+                  {READ_ALOUD_LANGUAGES.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                  {lang && !READ_ALOUD_LANGUAGES.some((option) => option.value === lang) && (
+                    <MenuItem value={lang}>{languageLabel(lang)}</MenuItem>
+                  )}
+                </TextField>
+                {!audioDataUrl && (
+                  <Button
+                    startIcon={<VolumeUpIcon />}
+                    disabled={!name.trim()}
+                    onClick={() => speakCard({ name: name.trim(), lang: lang || undefined })}
+                  >
+                    Hear it
+                  </Button>
+                )}
+              </Stack>
             </Stack>
 
             <Stack spacing={1}>

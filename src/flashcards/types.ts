@@ -7,6 +7,8 @@ export type FlashcardData = {
   frontText?: string;
   createdAt: number;
   audioUrl?: string;
+  /** Language to read the word aloud in (e.g. "es-ES"); the device's language when not set. */
+  lang?: string;
   setIds?: string[];
   backgroundColor?: string;
   /** Progress saved before practice was tracked per child; copied to the first child a parent adds. */
@@ -50,7 +52,10 @@ export type PracticeSettings = {
 export type ChildProfile = {
   id: string;
   name: string;
+  /** Emoji avatar; also the fallback when a photo avatar is removed. */
   avatar: string;
+  /** Optional photo avatar (a small, square data URL chosen from the parent's own pictures). */
+  avatarImage?: string;
   createdAt: number;
   settings: PracticeSettings;
 };

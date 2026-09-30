@@ -47,6 +47,8 @@ export function unlockAudio() {
     const warmUp = new SpeechSynthesisUtterance('');
     warmUp.volume = 0;
     window.speechSynthesis.speak(warmUp);
+    // Some browsers load their voices lazily; asking early means they're ready for the first card.
+    window.speechSynthesis.getVoices();
   }
 }
 
@@ -71,10 +73,34 @@ export function playSound(kind: SoundKind) {
 // Bumped whenever speech starts or stops, so a late failure can't talk over what came next.
 let speechToken = 0;
 
-function speakText(text: string) {
+const normalizeLang = (lang: string) => lang.replace(/_/g, '-').toLowerCase();
+
+// The best installed voice for a language: an exact match ("es-MX"), else any voice for the same
+// language ("es-ES"), preferring the device's default.
+function voiceFor(lang: string) {
+  const voices = window.speechSynthesis.getVoices();
+  const wanted = normalizeLang(lang);
+  const base = wanted.split('-')[0];
+  const matches = (voice: SpeechSynthesisVoice) => normalizeLang(voice.lang) === wanted;
+  const sameLanguage = (voice: SpeechSynthesisVoice) => normalizeLang(voice.lang).split('-')[0] === base;
+  return (
+    voices.find((voice) => matches(voice) && voice.default) ??
+    voices.find(matches) ??
+    voices.find((voice) => sameLanguage(voice) && voice.default) ??
+    voices.find(sameLanguage)
+  );
+}
+
+function speakText(text: string, lang?: string) {
   if (!('speechSynthesis' in window)) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 0.85;
+  if (lang) {
+    // Setting the language alone is enough on most devices; the voice helps where it isn't.
+    utterance.lang = lang;
+    const voice = voiceFor(lang);
+    if (voice) utterance.voice = voice;
+  }
   window.speechSynthesis.speak(utterance);
 }
 
@@ -86,11 +112,14 @@ export function stopSpeaking() {
   }
 }
 
-/** Says a card's word: the parent's recording when there is one, otherwise the device's voice. */
-export function speakCard(card: { name: string; audioUrl?: string }) {
+/**
+ * Says a card's word: the parent's recording when there is one, otherwise the device's voice (in the
+ * card's language, when it has one).
+ */
+export function speakCard(card: { name: string; audioUrl?: string; lang?: string }) {
   stopSpeaking();
   if (!card.audioUrl) {
-    speakText(card.name);
+    speakText(card.name, card.lang);
     return;
   }
   const token = speechToken;
@@ -100,6 +129,6 @@ export function speakCard(card: { name: string; audioUrl?: string }) {
     // Fall back to the device's voice only when the recording can't play at all (not when it was
     // interrupted on purpose).
     const blocked = error instanceof DOMException && ['NotAllowedError', 'NotSupportedError'].includes(error.name);
-    if (blocked && token === speechToken) speakText(card.name);
+    if (blocked && token === speechToken) speakText(card.name, card.lang);
   });
 }

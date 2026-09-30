@@ -22,7 +22,14 @@ function textColorFor(background?: string) {
   return luminance > 0.2 ? '#0f172a' : '#ffffff';
 }
 
-const textSize = (text: string) => (text.length <= 3 ? 's' : text.length <= 10 ? 'm' : 'l');
+// Count what a reader sees as characters, so an emoji (several code units, e.g. 👩‍🚒) sizes like one letter.
+const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : null;
+const visibleLength = (text: string) => (segmenter ? [...segmenter.segment(text)].length : Array.from(text).length);
+
+const textSize = (text: string) => {
+  const length = visibleLength(text);
+  return length <= 3 ? 's' : length <= 10 ? 'm' : 'l';
+};
 
 /** The front of a card: its picture, its text, or just its color. */
 export function CardFront({ card, alt, className }: CardFrontProps) {

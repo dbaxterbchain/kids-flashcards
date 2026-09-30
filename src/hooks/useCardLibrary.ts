@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { deleteCard, deleteSet, putCard, putCards, putSet } from '../db/cardsDb';
+import { addSetWithCards as addSetWithCardsToDb, deleteCard, deleteSetAndCards, putCard, putSet } from '../db/cardsDb';
 import { defaultCards, defaultSets } from '../flashcards/defaultData';
-import { slugifySetName } from '../flashcards/fileUtils';
+import { newId } from '../flashcards/ids';
+import { prepareSetImport, SetPackage, uniqueSetId } from '../flashcards/setPackage';
 import { loadCardsAndSets, restoreStarterCards } from '../flashcards/storage';
-import { FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
+import { FlashcardData, FlashcardSet } from '../flashcards/types';
 
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
 const STARTER_SET_ORDER = new Map(defaultSets.map((set, index) => [set.id, index]));
+
+export type RemoveSetOptions = {
+  /** Also delete the cards that are only in this set. Cards in other sets always stay. */
+  deleteCards?: boolean;
+};
 
 // Starter sets keep their usual order, and a parent's own sets follow alphabetically, so the order
 // is the same every time (the database hands sets back sorted by id).
@@ -66,22 +72,44 @@ export function useCardLibrary() {
     setCards((current) => current.filter((card) => card.id !== id));
   }, []);
 
+  // New sets never take a starter set's id, so bringing the starters back can't mix them in.
+  const newSetId = useCallback(
+    (name: string) => uniqueSetId(name, [...sets.map((set) => set.id), ...STARTER_SET_ORDER.keys()]),
+    [sets],
+  );
+
   /** Returns the existing set when one already has this name. */
   const createSet = useCallback(
     async (name: string): Promise<FlashcardSet> => {
       const trimmed = name.trim();
       const existing = sets.find((set) => normalizeName(set.name) === normalizeName(trimmed));
       if (existing) return existing;
-      const base = slugifySetName(trimmed);
-      const taken = new Set([...sets.map((set) => set.id), UNCATEGORIZED_SET_ID]);
-      let id = base;
-      for (let suffix = 2; taken.has(id); suffix += 1) id = `${base}-${suffix}`;
-      const set = { id, name: trimmed };
+      const set = { id: newSetId(trimmed), name: trimmed };
       await putSet(set);
       setSets((current) => [...current, set]);
       return set;
     },
-    [sets],
+    [sets, newSetId],
+  );
+
+  /** Saves a whole new set at once, e.g. one shared by another family or picked from the library. */
+  const addSetWithCards = useCallback(async (set: FlashcardSet, newCards: FlashcardData[]) => {
+    await addSetWithCardsToDb(set, newCards);
+    setSets((current) => [...current.filter((existing) => existing.id !== set.id), set]);
+    setCards((current) => {
+      const ids = new Set(newCards.map((card) => card.id));
+      return [...newCards, ...current.filter((card) => !ids.has(card.id))];
+    });
+  }, []);
+
+  /** Adds a shared set as a new set with its own copies of the cards. */
+  const importSet = useCallback(
+    async (pkg: SetPackage) => {
+      const { set, cards: newCards } = prepareSetImport(pkg, sets, { setId: newSetId(pkg.name), cardId: newId });
+      await addSetWithCards(set, newCards);
+      return set;
+    },
+    [sets, newSetId, addSetWithCards],
   );
 
   const renameSet = useCallback(async (id: string, name: string) => {
@@ -90,16 +118,21 @@ export function useCardLibrary() {
     setSets((current) => current.map((existing) => (existing.id === id ? set : existing)));
   }, []);
 
-  /** Deletes a set. Its cards stay; they just aren't in that set anymore. */
+  /** Deletes a set. Its cards stay, just without that set, unless the parent chose to delete them too. */
   const removeSet = useCallback(
-    async (id: string) => {
-      const updated = cards
-        .filter((card) => card.setIds?.includes(id))
-        .map((card) => ({ ...card, setIds: (card.setIds ?? []).filter((setId) => setId !== id) }));
-      await deleteSet(id);
-      if (updated.length > 0) await putCards(updated);
+    async (id: string, { deleteCards = false }: RemoveSetOptions = {}) => {
+      const inSet = cards.filter((card) => card.setIds?.includes(id));
+      const deletedIds = new Set(deleteCards ? inSet.filter((card) => card.setIds?.length === 1).map((card) => card.id) : []);
+      const updated = new Map(
+        inSet
+          .filter((card) => !deletedIds.has(card.id))
+          .map((card) => [card.id, { ...card, setIds: (card.setIds ?? []).filter((setId) => setId !== id) }]),
+      );
+      await deleteSetAndCards(id, [...deletedIds], [...updated.values()]);
       setSets((current) => current.filter((set) => set.id !== id));
-      setCards((current) => current.map((card) => updated.find((changed) => changed.id === card.id) ?? card));
+      setCards((current) =>
+        current.filter((card) => !deletedIds.has(card.id)).map((card) => updated.get(card.id) ?? card),
+      );
     },
     [cards],
   );
@@ -126,6 +159,8 @@ export function useCardLibrary() {
     saveCard,
     removeCard,
     createSet,
+    addSetWithCards,
+    importSet,
     renameSet,
     removeSet,
     restoreStarters,

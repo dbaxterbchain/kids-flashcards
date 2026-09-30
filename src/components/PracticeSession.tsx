@@ -3,12 +3,13 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplayIcon from '@mui/icons-material/Replay';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import { Avatar, Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
-import { avatarColor, buildOptions, hashString, promptSideFor } from '../flashcards/practice';
+import { buildOptions, hashString, promptSideFor } from '../flashcards/practice';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
+import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
 import { Flashcard } from './Flashcard';
 import './PracticeSession.css';
@@ -109,7 +110,7 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
       <Box component="section" aria-label="Practice results" className="practice practice--summary">
         <Confetti />
         <Stack spacing={2} alignItems="center" textAlign="center" role="status" sx={{ position: 'relative', zIndex: 1 }}>
-          <Avatar sx={{ width: 96, height: 96, fontSize: 56, bgcolor: avatarColor(profile.avatar) }}>{profile.avatar}</Avatar>
+          <ChildAvatar profile={profile} size={96} />
           <Typography variant="h4" component="h2">
             {summaryHeadline(correctCount, cards.length)}, {profile.name}!
           </Typography>
@@ -149,7 +150,7 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
   return (
     <Box component="section" aria-label={`Practice for ${profile.name}`} className="practice">
       <Stack direction="row" alignItems="center" spacing={1.5}>
-        <Avatar sx={{ width: 40, height: 40, fontSize: 24, bgcolor: avatarColor(profile.avatar) }}>{profile.avatar}</Avatar>
+        <ChildAvatar profile={profile} size={40} />
         <Typography variant="h6" component="h2" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
           {profile.name}
         </Typography>
