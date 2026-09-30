@@ -1,4 +1,6 @@
+import { fitStyle } from '../flashcards/textFit';
 import { FlashcardData } from '../flashcards/types';
+import { useFontsVersion } from '../hooks/useFontsVersion';
 import './CardFront.css';
 
 type CardFrontProps = {
@@ -33,6 +35,7 @@ const textSize = (text: string) => {
 
 /** The front of a card: its picture, its text, or just its color. */
 export function CardFront({ card, alt, className }: CardFrontProps) {
+  useFontsVersion();
   const style = card.backgroundColor ? { background: card.backgroundColor } : undefined;
   const text = card.frontText?.trim();
   return (
@@ -42,7 +45,7 @@ export function CardFront({ card, alt, className }: CardFrontProps) {
       ) : text ? (
         <span
           className={`card-front__text card-front__text--${textSize(text)}`}
-          style={{ color: textColorFor(card.backgroundColor) }}
+          style={{ ...fitStyle(text, 800), color: textColorFor(card.backgroundColor) }}
         >
           {text}
         </span>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BackupError, parseBackup } from './backup';
-import { readCard, readColor, readDataUrl, readLang } from './sanitize';
+import { readCard, readColor, readDataUrl, readLang, readSet } from './sanitize';
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 const WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZF';
@@ -58,6 +58,17 @@ describe('sanitizing values from files', () => {
     });
     expect(readCard({ id: 'c2', name: '   ' })).toBeNull();
     expect(readCard('not a card')).toBeNull();
+  });
+
+  it('keeps explanations and set introductions, as plain text', () => {
+    expect(readCard({ id: 'c1', name: '5', explain: '  0101 is 4 + 1.\nSo it is 5.  ' })?.explain).toBe('0101 is 4 + 1.\nSo it is 5.');
+    expect(readCard({ id: 'c1', name: '5', explain: 42 })?.explain).toBeUndefined();
+    expect(readSet({ id: 's1', name: 'Binary', about: ' Computers count with 0 and 1. ' })).toEqual({
+      id: 's1',
+      name: 'Binary',
+      about: 'Computers count with 0 and 1.',
+    });
+    expect(readSet({ id: 's1', name: 'Binary', about: '   ' })?.about).toBeUndefined();
   });
 });
 

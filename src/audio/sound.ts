@@ -1,6 +1,8 @@
 // Sound for practice: the card's recording (or the device's voice when there is none) plus short
 // synthesized chimes, so no audio files need to be shipped or cached.
 
+import { deviceLanguage, preferredVoiceURI, voiceFor } from './voices';
+
 type SoundKind = 'correct' | 'wrong' | 'finish';
 
 // A valid, empty WAV file used to unlock audio playback.
@@ -73,34 +75,23 @@ export function playSound(kind: SoundKind) {
 // Bumped whenever speech starts or stops, so a late failure can't talk over what came next.
 let speechToken = 0;
 
-const normalizeLang = (lang: string) => lang.replace(/_/g, '-').toLowerCase();
-
-// The best installed voice for a language: an exact match ("es-MX"), else any voice for the same
-// language ("es-ES"), preferring the device's default.
-function voiceFor(lang: string) {
-  const voices = window.speechSynthesis.getVoices();
-  const wanted = normalizeLang(lang);
-  const base = wanted.split('-')[0];
-  const matches = (voice: SpeechSynthesisVoice) => normalizeLang(voice.lang) === wanted;
-  const sameLanguage = (voice: SpeechSynthesisVoice) => normalizeLang(voice.lang).split('-')[0] === base;
-  return (
-    voices.find((voice) => matches(voice) && voice.default) ??
-    voices.find(matches) ??
-    voices.find((voice) => sameLanguage(voice) && voice.default) ??
-    voices.find(sameLanguage)
-  );
+// Reads in the card's language, with the best voice this device has for it (or the one a grown-up
+// picked). Words in the device's own language use the device's default voice unless a grown-up
+// picked another.
+function chooseVoice(utterance: SpeechSynthesisUtterance, lang?: string) {
+  const language = lang ?? (preferredVoiceURI(deviceLanguage()) ? deviceLanguage() : undefined);
+  if (!language) return;
+  // Setting the language alone is enough on most devices; the voice helps where it isn't.
+  utterance.lang = language;
+  const voice = voiceFor(language);
+  if (voice) utterance.voice = voice;
 }
 
 function speakText(text: string, lang?: string) {
   if (!('speechSynthesis' in window)) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 0.85;
-  if (lang) {
-    // Setting the language alone is enough on most devices; the voice helps where it isn't.
-    utterance.lang = lang;
-    const voice = voiceFor(lang);
-    if (voice) utterance.voice = voice;
-  }
+  chooseVoice(utterance, lang);
   window.speechSynthesis.speak(utterance);
 }
 
@@ -157,5 +148,43 @@ export function speakCard(card: { name: string; audioUrl?: string; lang?: string
     // interrupted on purpose).
     const blocked = error instanceof DOMException && ['NotAllowedError', 'NotSupportedError'].includes(error.name);
     if (blocked && token === speechToken) speakText(card.name, card.lang);
+  });
+}
+
+/** Splits text into sentences, since some browsers stop reading a long utterance partway through. */
+export const sentencesOf = (text: string) =>
+  text
+    .split(/(?<=[.!?:])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+/**
+ * Reads a longer explanation aloud in the device's voice, a sentence at a time. Resolves when it
+ * finishes or is stopped.
+ */
+export function speakAloud(text: string): Promise<void> {
+  stopSpeaking();
+  const sentences = sentencesOf(text);
+  if (!('speechSynthesis' in window) || sentences.length === 0) return Promise.resolve();
+  const token = speechToken;
+  return new Promise((resolve) => {
+    const finish = () => {
+      window.clearInterval(watch);
+      resolve();
+    };
+    // Stopping doesn't reliably fire an event on every browser, so check for it too.
+    const watch = window.setInterval(() => {
+      if (token !== speechToken) finish();
+    }, 250);
+    sentences.forEach((sentence, index) => {
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      utterance.rate = 0.9;
+      chooseVoice(utterance);
+      if (index === sentences.length - 1) {
+        utterance.onend = finish;
+        utterance.onerror = finish;
+      }
+      window.speechSynthesis.speak(utterance);
+    });
   });
 }

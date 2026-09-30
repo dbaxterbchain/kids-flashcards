@@ -1,5 +1,7 @@
 import { ButtonBase } from '@mui/material';
+import { fitStyle } from '../flashcards/textFit';
 import { FlashcardData } from '../flashcards/types';
+import { useFontsVersion } from '../hooks/useFontsVersion';
 import { CardFront } from './CardFront';
 import './SetTiles.css';
 
@@ -18,6 +20,7 @@ type SetTilesProps = {
 
 /** Big, tappable tiles for picking what to learn, each showing a peek at its cards. */
 export function SetTiles({ tiles, onOpen }: SetTilesProps) {
+  useFontsVersion();
   return (
     <div className="set-tiles">
       {tiles.map((tile) => {
@@ -39,7 +42,9 @@ export function SetTiles({ tiles, onOpen }: SetTilesProps) {
               ))}
             </span>
             <span className="set-tile__label">
-              <span className="set-tile__name">{tile.name}</span>
+              <span className="set-tile__name" style={fitStyle(tile.name, 800)}>
+                {tile.name}
+              </span>
               <span className="set-tile__count">{tile.cards.length}</span>
             </span>
           </ButtonBase>

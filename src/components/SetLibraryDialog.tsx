@@ -1,6 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import {
   Alert,
   Box,
@@ -20,26 +21,47 @@ import {
   useTheme,
 } from '@mui/material';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { voiceStatus } from '../audio/voices';
+import { explainedNote, paragraphsOf } from '../flashcards/explain';
 import { languageLabel } from '../flashcards/languages';
-import { LIBRARY_SUBJECTS, LibrarySet, LibrarySubject, librarySetId, loadLibrary } from '../flashcards/library';
-import { FlashcardSet } from '../flashcards/types';
+import {
+  describeLibraryUpdate,
+  LIBRARY_SUBJECTS,
+  LibrarySet,
+  LibrarySubject,
+  librarySetId,
+  libraryUpdate,
+  LibraryUpdate,
+  loadLibrary,
+} from '../flashcards/library';
+import { fitStyle } from '../flashcards/textFit';
+import { FlashcardData, FlashcardSet } from '../flashcards/types';
+import { useVoices } from '../hooks/useVoices';
 import { CardFront } from './CardFront';
+import { MissingVoiceAlert } from './MissingVoiceAlert';
 import './SetLibraryDialog.css';
 
 type SetLibraryDialogProps = {
   open: boolean;
   sets: FlashcardSet[];
+  /** Every card on this device, to see what's new in the library for sets added before. */
+  cards: FlashcardData[];
   onClose: () => void;
   onAdd: (entry: LibrarySet) => Promise<void>;
+  /** Fills in what's new in the library for a set added from it before. */
+  onUpdate: (update: LibraryUpdate) => Promise<void>;
 };
 
 type SubjectFilter = LibrarySubject | 'all';
 
 const describe = (entry: LibrarySet) =>
-  [`${entry.cards.length} cards`, `Ages ${entry.minAge}+`, entry.lang && languageLabel(entry.lang)].filter(Boolean).join(' · ');
+  [`${entry.cards.length} cards`, `Ages ${entry.minAge}+`, entry.lang && languageLabel(entry.lang), explainedNote(entry.cards)]
+    .filter(Boolean)
+    .join(' · ');
 
 /** Ready-made sets a grown-up can add in one tap. */
-export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialogProps) {
+export function SetLibraryDialog({ open, sets, cards, onClose, onAdd, onUpdate }: SetLibraryDialogProps) {
+  useVoices();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [library, setLibrary] = useState<LibrarySet[] | null>(null);
@@ -80,6 +102,20 @@ export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialo
   }, [open, library]);
 
   const isAdded = (entry: LibrarySet) => sets.some((set) => set.id === librarySetId(entry));
+  const updateFor = (entry: LibrarySet) => libraryUpdate(entry, sets, cards);
+
+  const update = async (entry: LibrarySet, changes: LibraryUpdate) => {
+    setAddingId(entry.id);
+    try {
+      await onUpdate(changes);
+      setMessage({ severity: 'success', text: `Added ${describeLibraryUpdate(changes)} to “${changes.set.name}”.` });
+    } catch (error) {
+      console.error('Unable to update the set', error);
+      setMessage({ severity: 'error', text: 'Unable to update that set. Storage might be full or blocked.' });
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const add = async (entry: LibrarySet) => {
     setAddingId(entry.id);
@@ -96,6 +132,21 @@ export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialo
 
   const addButton = (entry: LibrarySet, size: 'small' | 'medium' = 'small') => {
     const added = isAdded(entry);
+    const changes = added ? updateFor(entry) : null;
+    if (changes) {
+      return (
+        <Button
+          size={size}
+          variant="outlined"
+          startIcon={<LightbulbIcon />}
+          disabled={addingId !== null}
+          onClick={() => void update(entry, changes)}
+          aria-label={`Update ${entry.name}`}
+        >
+          {addingId === entry.id ? 'Updating…' : 'Update'}
+        </Button>
+      );
+    }
     return (
       <Button
         size={size}
@@ -128,6 +179,7 @@ export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialo
       </Stack>
     );
   } else if (viewing) {
+    const viewingUpdate = isAdded(viewing) ? updateFor(viewing) : null;
     content = (
       <Stack spacing={2}>
         <Box>
@@ -136,13 +188,38 @@ export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialo
           </Typography>
           <Typography>{viewing.description}</Typography>
         </Box>
+        {viewing.lang && voiceStatus(viewing.lang) === 'missing' && <MissingVoiceAlert lang={viewing.lang} />}
+        {viewingUpdate && (
+          <Alert severity="info" icon={<LightbulbIcon />}>
+            New since you added this set: {describeLibraryUpdate(viewingUpdate)}. Updating adds only what&apos;s missing,
+            so your own changes stay.
+          </Alert>
+        )}
+        {viewing.about && (
+          <Box component="section" aria-labelledby="library-about-heading" className="library-about">
+            <Typography id="library-about-heading" component="h3" className="library-about__heading">
+              <LightbulbIcon aria-hidden fontSize="small" />
+              How this set works
+            </Typography>
+            {paragraphsOf(viewing.about).map((paragraph, index) => (
+              <Typography key={index} variant="body2">
+                {paragraph}
+              </Typography>
+            ))}
+          </Box>
+        )}
         <Box className="library-cards">
           {viewing.cards.map((card) => (
             <Box key={card.key} component="figure" className="library-cards__card">
               <div className="library-cards__front">
                 <CardFront card={card} alt="" />
               </div>
-              <Typography component="figcaption" variant="body2" sx={{ fontWeight: 700 }}>
+              <Typography
+                component="figcaption"
+                variant="body2"
+                style={fitStyle(card.name)}
+                sx={{ fontWeight: 700, fontSize: 'min(0.875rem, calc(100cqi / var(--fit-em, 1)))' }}
+              >
                 {card.name}
               </Typography>
             </Box>

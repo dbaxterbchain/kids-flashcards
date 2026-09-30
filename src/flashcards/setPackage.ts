@@ -16,16 +16,19 @@ export type SetPackage = {
   version: number;
   exportedAt: string;
   name: string;
+  /** The set's "How this set works" introduction. */
+  about?: string;
   cards: FlashcardData[];
 };
 
 /** Packs a set for sharing. Each child's progress and the card's other sets stay behind. */
-export function createSetPackage(name: string, cards: FlashcardData[]): SetPackage {
+export function createSetPackage(name: string, cards: FlashcardData[], about?: string): SetPackage {
   return {
     format: SET_FORMAT,
     version: SET_VERSION,
     exportedAt: new Date().toISOString(),
     name,
+    ...(about ? { about } : {}),
     cards: cards.map(({ review: _review, setIds: _setIds, ...card }) => card),
   };
 }
@@ -60,6 +63,7 @@ export function parseSetPackage(text: string): SetPackage {
     version: SET_VERSION,
     exportedAt: readText(data.exportedAt, 40) ?? new Date(0).toISOString(),
     name: readText(data.name, 60)?.trim() || 'Shared set',
+    about: readText(data.about, 1000)?.trim() || undefined,
     cards,
   };
 }
@@ -91,7 +95,7 @@ type ImportIds = {
  * anything already on the device. The cards keep the package's order (newest first).
  */
 export function prepareSetImport(pkg: SetPackage, existing: FlashcardSet[], ids: ImportIds, now = Date.now()) {
-  const set: FlashcardSet = { id: ids.setId, name: uniqueSetName(pkg.name, existing) };
+  const set: FlashcardSet = { id: ids.setId, name: uniqueSetName(pkg.name, existing), about: pkg.about };
   const cards: FlashcardData[] = pkg.cards.map(({ review: _review, ...card }, index) => ({
     ...card,
     id: ids.cardId(index),

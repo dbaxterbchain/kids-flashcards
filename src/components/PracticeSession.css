@@ -63,7 +63,7 @@
 }
 
 .flashcard--practice .flashcard-name {
-  font-size: clamp(2rem, 16cqi, 3.25rem);
+  font-size: max(1rem, min(clamp(2rem, 16cqi, 3.25rem), calc(94cqi / var(--fit-em, 1))));
   font-weight: 800;
 }
 
@@ -290,10 +290,16 @@
   outline-offset: 3px;
 }
 
+.practice-intro {
+  container-type: inline-size;
+}
+
 .practice-intro__word {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   margin: 0;
   color: #0f172a;
-  font-size: clamp(2rem, 9vw, 3rem);
+  font-size: min(clamp(2rem, 9vw, 3rem), calc(94cqi / var(--fit-em, 1)));
   font-weight: 800;
   line-height: 1.1;
   text-align: center;

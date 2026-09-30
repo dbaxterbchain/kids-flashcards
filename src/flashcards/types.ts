@@ -11,6 +11,8 @@ export type FlashcardData = {
   lang?: string;
   /** A question to talk about together, shown on the back, e.g. "What sound does a dog make?" */
   prompt?: string;
+  /** "How it works": a longer explanation for tricky ideas, opened from the back of the card. */
+  explain?: string;
   setIds?: string[];
   backgroundColor?: string;
   /** Progress saved before practice was tracked per child; copied to the first child a parent adds. */
@@ -20,6 +22,8 @@ export type FlashcardData = {
 export type FlashcardSet = {
   id: string;
   name: string;
+  /** "How this set works": an introduction shown on the set's page. */
+  about?: string;
 };
 
 /** Pseudo-set used for cards that aren't in any set. */

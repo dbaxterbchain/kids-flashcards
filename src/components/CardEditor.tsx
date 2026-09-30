@@ -30,14 +30,18 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { speakCard } from '../audio/sound';
+import { voiceStatus } from '../audio/voices';
+import { newerEmojiIn } from '../flashcards/emojiSupport';
 import { fileToDataUrl, prepareCardImage } from '../flashcards/fileUtils';
 import { newId } from '../flashcards/ids';
 import { languageLabel, READ_ALOUD_LANGUAGES } from '../flashcards/languages';
 import { FlashcardData, FlashcardSet, MAX_AUDIO_SECONDS } from '../flashcards/types';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { useVoices } from '../hooks/useVoices';
 import { CardFront } from './CardFront';
+import { MissingVoiceAlert } from './MissingVoiceAlert';
 import './CardEditor.css';
 
 type FrontType = 'picture' | 'color' | 'text';
@@ -133,16 +137,20 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const canTakePhoto = useMediaQuery('(pointer: coarse)');
+  // Shows whether the device has a voice for the card's language, once it has listed its voices.
+  useVoices();
   // One id per editor, so retrying after a failed save can't create a second card.
   const [id] = useState(() => card?.id ?? newId());
   const [frontType, setFrontType] = useState<FrontType>(() => frontTypeOf(card));
   const [name, setName] = useState(card?.name ?? '');
   const [imageUrl, setImageUrl] = useState(card?.imageUrl ?? '');
   const [frontText, setFrontText] = useState(card?.frontText ?? '');
+  const newerEmoji = useMemo(() => [...new Set(newerEmojiIn(frontText))], [frontText]);
   const [backgroundColor, setBackgroundColor] = useState(card?.backgroundColor ?? '');
   // '' reads the word in the device's own language.
   const [lang, setLang] = useState(card?.lang ?? '');
   const [prompt, setPrompt] = useState(card?.prompt ?? '');
+  const [explain, setExplain] = useState(card?.explain ?? '');
   // True while the background was picked automatically from the picture, so a new picture can replace it.
   const [backgroundIsAuto, setBackgroundIsAuto] = useState(false);
   const [setIds, setSetIds] = useState<string[]>(card?.setIds ?? initialSetIds ?? []);
@@ -270,6 +278,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
         audioUrl: audioDataUrl ?? undefined,
         lang: lang || undefined,
         prompt: prompt.trim() || undefined,
+        explain: explain.trim() || undefined,
         setIds,
         createdAt: card?.createdAt ?? Date.now(),
         // Kept until it's moved to the first child's progress.
@@ -370,6 +379,12 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
                   onChange={(event) => setFrontText(event.target.value)}
                   fullWidth
                   slotProps={{ htmlInput: { maxLength: 60 } }}
+                  helperText={
+                    newerEmoji.length > 0
+                      ? `${newerEmoji.join(' ')} ${newerEmoji.length === 1 ? 'is a newer emoji that' : 'are newer emoji that'} may show as an empty box on older devices, like Windows 10 computers.`
+                      : undefined
+                  }
+                  sx={{ '& .MuiFormHelperText-root': { color: 'warning.dark' } }}
                 />
               )}
 
@@ -409,6 +424,19 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
               multiline
               maxRows={3}
               slotProps={{ htmlInput: { maxLength: 120 } }}
+            />
+
+            <TextField
+              label="How it works (optional)"
+              placeholder="e.g. 101 in binary is 5: one 4, no 2s and one 1. 4 + 1 = 5."
+              value={explain}
+              onChange={(event) => setExplain(event.target.value)}
+              helperText="For ideas that need explaining. Kids and grown-ups open it with the light bulb on the back of the card."
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={8}
+              slotProps={{ htmlInput: { maxLength: 600 } }}
             />
 
             <Stack spacing={1}>
@@ -487,6 +515,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
                   </Button>
                 )}
               </Stack>
+              {lang && !audioDataUrl && voiceStatus(lang) === 'missing' && <MissingVoiceAlert lang={lang} />}
             </Stack>
 
             <Stack spacing={1}>

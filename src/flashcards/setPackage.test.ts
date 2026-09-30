@@ -38,6 +38,16 @@ describe('sharing a set', () => {
     expect(() => parseSetPackage(JSON.stringify({ format: 'kids-flashcards-set', version: 1, cards: [] }))).toThrow(/no cards/);
   });
 
+  it('keeps the set’s introduction and the cards’ explanations', () => {
+    const explained = [{ ...cards[0], explain: 'Grandpa is Dad’s dad.' }, cards[1]];
+    const parsed = parseSetPackage(JSON.stringify(createSetPackage('Family', explained, 'Our family, near and far.')));
+    expect(parsed.about).toBe('Our family, near and far.');
+    expect(parsed.cards.find((card) => card.name === 'Grandpa')?.explain).toBe('Grandpa is Dad’s dad.');
+    const { set } = prepareSetImport(parsed, [], { setId: 'family', cardId: (index) => `new-${index}` });
+    expect(set.about).toBe('Our family, near and far.');
+    expect('about' in createSetPackage('Family', cards)).toBe(false);
+  });
+
   it('names an unnamed set', () => {
     const pkg = { ...createSetPackage('   ', cards) };
     expect(parseSetPackage(JSON.stringify(pkg)).name).toBe('Shared set');
