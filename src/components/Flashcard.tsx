@@ -1,5 +1,6 @@
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import MicIcon from '@mui/icons-material/Mic';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Card, IconButton, Stack, styled } from '@mui/material';
 import { KeyboardEvent, useState } from 'react';
@@ -18,6 +19,8 @@ type FlashcardProps = {
   onFlipChange?: (value: boolean) => void;
   /** Say the word (the card's recording, or the device's voice) when the card is flipped over. */
   speakOnFlip?: boolean;
+  /** Shows a "Say it" button on the back, for the child to practice saying the word. */
+  onSayIt?: () => void;
   className?: string;
 };
 
@@ -30,6 +33,7 @@ export function Flashcard({
   disableFlip = false,
   onFlipChange,
   speakOnFlip = false,
+  onSayIt,
   className,
 }: FlashcardProps) {
   const [isFlippedState, setIsFlippedState] = useState(false);
@@ -72,8 +76,11 @@ export function Flashcard({
         <div className="flashcard-face flashcard-front">
           <CardFront card={card} />
         </div>
-        <div className="flashcard-face flashcard-back">
-          <p className="flashcard-name">{card.name}</p>
+        <div className={`flashcard-face flashcard-back${card.prompt ? ' flashcard-back--prompt' : ''}`}>
+          <div className="flashcard-words">
+            <p className="flashcard-name">{card.name}</p>
+            {card.prompt && <p className="flashcard-prompt">{card.prompt}</p>}
+          </div>
           {!disableFlip && (
             <IconButton
               className="flashcard-speak"
@@ -85,6 +92,19 @@ export function Flashcard({
               aria-label={`Hear ${card.name}`}
             >
               <VolumeUpIcon />
+            </IconButton>
+          )}
+          {!disableFlip && onSayIt && (
+            <IconButton
+              className="flashcard-say-it"
+              tabIndex={isFlipped ? 0 : -1}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSayIt();
+              }}
+              aria-label={`Say ${card.name}`}
+            >
+              <MicIcon />
             </IconButton>
           )}
         </div>
@@ -136,7 +156,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
     background: 'transparent',
   },
   // A light backing keeps the buttons visible on dark or busy card fronts.
-  '.flashcard-actions .MuiIconButton-root, .flashcard-speak.MuiIconButton-root': {
+  '.flashcard-actions .MuiIconButton-root, .flashcard-speak.MuiIconButton-root, .flashcard-say-it.MuiIconButton-root': {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     boxShadow: theme.shadows[1],
     '&:hover': {

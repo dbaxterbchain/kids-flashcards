@@ -9,6 +9,8 @@ export type FlashcardData = {
   audioUrl?: string;
   /** Language to read the word aloud in (e.g. "es-ES"); the device's language when not set. */
   lang?: string;
+  /** A question to talk about together, shown on the back, e.g. "What sound does a dog make?" */
+  prompt?: string;
   setIds?: string[];
   backgroundColor?: string;
   /** Progress saved before practice was tracked per child; copied to the first child a parent adds. */
@@ -31,6 +33,8 @@ export type FlashcardReview = {
   reviewCount: number;
   lastCorrect?: boolean;
   lastScore?: number;
+  /** The last few first-try results for this card, oldest first. */
+  recent?: boolean[];
 };
 
 /**
@@ -47,6 +51,17 @@ export type PracticeSettings = {
   roundSize: number;
   readAloud: boolean;
   soundEffects: boolean;
+  /** Show and say cards the child hasn't met yet before asking about them. */
+  introduceNew: boolean;
+  /** Add or remove an answer choice as the child gets better or struggles. */
+  autoAdjust: boolean;
+};
+
+/** An automatic change to how many answers a child chooses from. */
+export type DifficultyChange = {
+  at: number;
+  from: number;
+  to: number;
 };
 
 export type ChildProfile = {
@@ -58,6 +73,21 @@ export type ChildProfile = {
   avatarImage?: string;
   createdAt: number;
   settings: PracticeSettings;
+  /** First-try answers since the number of choices last changed, oldest first. */
+  recentResults?: boolean[];
+  /** The last automatic change to the number of choices, to tell grown-ups about. */
+  lastAdjustment?: DifficultyChange;
+  /** Stickers earned by finishing rounds, oldest first. */
+  stickers?: Sticker[];
+  /** Days (YYYY-MM-DD, the device's time zone) with at least one finished round, oldest first. */
+  practiceDays?: string[];
+};
+
+export type Sticker = {
+  emoji: string;
+  at: number;
+  /** Earned with a perfect round. */
+  shiny?: boolean;
 };
 
 /** One child's spaced-repetition state for one card. */

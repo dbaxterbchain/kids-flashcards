@@ -15,7 +15,16 @@ import {
 } from './sanitize';
 import { SaveResult, shareOrDownloadJson } from './shareFile';
 import { STORAGE_KEYS } from './storageKeys';
-import { CardProgress, ChildProfile, FlashcardData, FlashcardSet, PracticeSettings, PromptMode } from './types';
+import {
+  CardProgress,
+  ChildProfile,
+  DifficultyChange,
+  FlashcardData,
+  FlashcardSet,
+  PracticeSettings,
+  PromptMode,
+  Sticker,
+} from './types';
 
 export type { SaveResult } from './shareFile';
 
@@ -25,6 +34,7 @@ const BACKUP_VERSION = 1;
 export type BackupSettings = {
   hiddenSetIds: string[];
   speakOnFlip: boolean;
+  sayIt: boolean;
 };
 
 export type Backup = {
@@ -78,8 +88,36 @@ function readSettings(value: unknown): PracticeSettings {
     roundSize: roundSize && roundSize >= 1 ? Math.min(50, Math.round(roundSize)) : defaults.roundSize,
     readAloud: typeof value.readAloud === 'boolean' ? value.readAloud : defaults.readAloud,
     soundEffects: typeof value.soundEffects === 'boolean' ? value.soundEffects : defaults.soundEffects,
+    introduceNew: typeof value.introduceNew === 'boolean' ? value.introduceNew : defaults.introduceNew,
+    autoAdjust: typeof value.autoAdjust === 'boolean' ? value.autoAdjust : defaults.autoAdjust,
   };
 }
+
+const readChoices = (value: unknown) => {
+  const count = readNumber(value);
+  return count !== undefined && count >= 2 && count <= 4 ? Math.round(count) : undefined;
+};
+
+function readAdjustment(value: unknown): DifficultyChange | undefined {
+  if (!isRecord(value)) return undefined;
+  const at = readNumber(value.at);
+  const from = readChoices(value.from);
+  const to = readChoices(value.to);
+  return at !== undefined && from !== undefined && to !== undefined ? { at, from, to } : undefined;
+}
+
+function readSticker(value: unknown): Sticker | null {
+  if (!isRecord(value)) return null;
+  const emoji = readText(value.emoji, 16);
+  const at = readNumber(value.at);
+  if (!emoji || at === undefined) return null;
+  return value.shiny === true ? { emoji, at, shiny: true } : { emoji, at };
+}
+
+const readPracticeDays = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((day): day is string => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)).slice(-60)
+    : undefined;
 
 function readProfile(value: unknown): ChildProfile | null {
   if (!isRecord(value)) return null;
@@ -93,6 +131,16 @@ function readProfile(value: unknown): ChildProfile | null {
     avatarImage: readDataUrl(value.avatarImage, 'image'),
     createdAt: readNumber(value.createdAt) ?? Date.now(),
     settings: readSettings(value.settings),
+    recentResults: Array.isArray(value.recentResults)
+      ? value.recentResults.filter((result): result is boolean => typeof result === 'boolean').slice(-20)
+      : undefined,
+    lastAdjustment: readAdjustment(value.lastAdjustment),
+    stickers: Array.isArray(value.stickers)
+      ? readList(value.stickers, readSticker)
+          .filter((sticker): sticker is Sticker => sticker !== null)
+          .slice(-5000)
+      : undefined,
+    practiceDays: readPracticeDays(value.practiceDays),
   };
 }
 
@@ -142,6 +190,7 @@ export function parseBackup(text: string): Backup {
     settings: {
       hiddenSetIds: readIds(settings.hiddenSetIds),
       speakOnFlip: typeof settings.speakOnFlip === 'boolean' ? settings.speakOnFlip : true,
+      sayIt: typeof settings.sayIt === 'boolean' ? settings.sayIt : true,
     },
   };
 }
@@ -153,6 +202,7 @@ export async function restoreBackup(backup: Backup) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.hiddenSets, JSON.stringify(backup.settings.hiddenSetIds));
     window.localStorage.setItem(STORAGE_KEYS.speakOnFlip, JSON.stringify(backup.settings.speakOnFlip));
+    window.localStorage.setItem(STORAGE_KEYS.sayIt, JSON.stringify(backup.settings.sayIt));
   } catch (error) {
     console.warn('Unable to restore settings from the backup', error);
   }

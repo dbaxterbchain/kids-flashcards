@@ -2,10 +2,13 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import InsightsIcon from '@mui/icons-material/Insights';
+import TuneIcon from '@mui/icons-material/Tune';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PrintIcon from '@mui/icons-material/Print';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {
   Alert,
@@ -22,7 +25,6 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -35,18 +37,20 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { Backup, BackupError, SaveResult } from '../flashcards/backup';
 import { LibrarySet } from '../flashcards/library';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
-import { parseSetPackage, SetPackage } from '../flashcards/setPackage';
-import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
+import { IncomingSet, parseSetPackage, SetPackage } from '../flashcards/setPackage';
+import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
 import { RemoveSetOptions } from '../hooks/useCardLibrary';
 import { BackupSection } from './BackupSection';
 import { ChildAvatar } from './ChildAvatar';
+import { ChildProgressDialog } from './ChildProgressDialog';
 import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
 import { SetImportDialog } from './SetImportDialog';
+import { PrintSetDialog } from './PrintSetDialog';
 import { SetLibraryDialog } from './SetLibraryDialog';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
@@ -58,6 +62,8 @@ type ManageViewProps = {
   hiddenSetIds: string[];
   profiles: ChildProfile[];
   speakOnFlip: boolean;
+  sayIt: boolean;
+  onSayItChange: (value: boolean) => void;
   missingStarterCount: number;
   onDone: () => void;
   onNewCard: (setId?: string) => void;
@@ -72,6 +78,9 @@ type ManageViewProps = {
   /** Adds a shared set as a new set. */
   onImportSet: (pkg: SetPackage) => Promise<FlashcardSet>;
   onAddLibrarySet: (entry: LibrarySet) => Promise<void>;
+  /** A set file shared to the app or opened with it, to preview and import. */
+  incomingSet?: IncomingSet | null;
+  onIncomingSetHandled?: () => void;
   onAddChild: () => void;
   onEditChild: (profile: ChildProfile) => void;
   onSpeakOnFlipChange: (value: boolean) => void;
@@ -98,9 +107,25 @@ const hasNoSet = (card: FlashcardData) => !card.setIds || card.setIds.length ===
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
+// Automatic changes to the number of choices are mentioned for two weeks.
+const RECENT_ADJUSTMENT_MS = 14 * 24 * 60 * 60 * 1000;
+
+const adjustmentNote = (name: string, { at, from, to }: DifficultyChange) => {
+  const when = new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return to > from
+    ? `Now ${to} choices (was ${from}) since ${when}, because ${name} was getting nearly everything right.`
+    : `Now ${to} choices (was ${from}) since ${when}, to make it a bit easier.`;
+};
+
 /** The parent-only area for changing cards, sets, children and settings. */
 export function ManageView(props: ManageViewProps) {
-  const [tab, setTab] = useState<ManageTab>('cards');
+  const [tab, setTab] = useState<ManageTab>(props.incomingSet ? 'sets' : 'cards');
+  const hasIncomingSet = Boolean(props.incomingSet);
+
+  // A shared set file opens straight into Sets, where its preview is shown.
+  useEffect(() => {
+    if (hasIncomingSet) setTab('sets');
+  }, [hasIncomingSet]);
   const [savingBackup, setSavingBackup] = useState(false);
   const tabs: { value: ManageTab; label: string }[] = [
     { value: 'cards', label: 'Cards' },
@@ -281,6 +306,8 @@ function SetsTab({
   onShareSet,
   onImportSet,
   onAddLibrarySet,
+  incomingSet,
+  onIncomingSetHandled,
 }: ManageViewProps) {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -288,6 +315,7 @@ function SetsTab({
   const [renameValue, setRenameValue] = useState('');
   const [menu, setMenu] = useState<{ anchor: HTMLElement; set: FlashcardSet } | null>(null);
   const [deleting, setDeleting] = useState<FlashcardSet | null>(null);
+  const [printing, setPrinting] = useState<FlashcardSet | null>(null);
   const [importing, setImporting] = useState<SetPackage | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [message, setMessage] = useState<SetsMessage | null>(null);
@@ -350,6 +378,13 @@ function SetsTab({
       setSharingId(null);
     }
   };
+
+  useEffect(() => {
+    if (!incomingSet) return;
+    if ('pkg' in incomingSet) setImporting(incomingSet.pkg);
+    else setMessage({ severity: 'error', text: incomingSet.error });
+    onIncomingSetHandled?.();
+  }, [incomingSet, onIncomingSetHandled]);
 
   const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -460,6 +495,19 @@ function SetsTab({
           Rename
         </MenuItem>
         <MenuItem
+          disabled={Boolean(menu) && countFor(menu?.set.id ?? '') === 0}
+          onClick={() => {
+            if (!menu) return;
+            setPrinting(menu.set);
+            setMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <PrintIcon fontSize="small" />
+          </ListItemIcon>
+          Print
+        </MenuItem>
+        <MenuItem
           sx={{ color: 'error.main' }}
           onClick={() => {
             if (!menu) return;
@@ -498,6 +546,11 @@ function SetsTab({
       </Dialog>
 
       <DeleteSetDialog set={deleting} cards={cards} onClose={() => setDeleting(null)} onDelete={handleDelete} />
+      <PrintSetDialog
+        set={printing}
+        cards={printing ? cards.filter((card) => card.setIds?.includes(printing.id)) : []}
+        onClose={() => setPrinting(null)}
+      />
       <SetImportDialog pkg={importing} sets={sets} onClose={() => setImporting(null)} onImport={handleImport} />
       <SetLibraryDialog open={libraryOpen} sets={sets} onClose={() => setLibraryOpen(false)} onAdd={onAddLibrarySet} />
 
@@ -517,7 +570,16 @@ function SetsTab({
   );
 }
 
-function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProps) {
+function ChildrenTab({ cards, profiles, sets, hiddenSetIds, onAddChild, onEditChild }: ManageViewProps) {
+  const [showingProgress, setShowingProgress] = useState<ChildProfile | null>(null);
+  const allSets = [...sets, ...(cards.some(hasNoSet) ? [{ id: UNCATEGORIZED_SET_ID, name: 'No set' }] : [])];
+  // "All sets" means the sets kids can see, as in practice.
+  const practicedSets = (profile: ChildProfile) => {
+    const chosen = profile.settings.setIds;
+    return chosen === null
+      ? allSets.filter((set) => !hiddenSetIds.includes(set.id))
+      : allSets.filter((set) => chosen.includes(set.id));
+  };
   const setSummary = (setIds: string[] | null) => {
     if (setIds === null) return 'All sets';
     const names = sets.filter((set) => setIds.includes(set.id)).map((set) => set.name);
@@ -541,28 +603,63 @@ function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProp
       ) : (
         <List disablePadding sx={listSx}>
           {profiles.map((profile, index) => (
-            <ListItemButton key={profile.id} divider={index < profiles.length - 1} onClick={() => onEditChild(profile)}>
+            <ListItem key={profile.id} divider={index < profiles.length - 1} alignItems="flex-start">
               <ListItemAvatar>
                 <ChildAvatar profile={profile} size={40} />
               </ListItemAvatar>
-              <ListItemText
-                primary={profile.name}
-                secondary={`${PROMPT_MODE_LABELS[profile.settings.promptMode]} · ${profile.settings.choiceCount} choices · ${plural(
-                  profile.settings.roundSize,
-                  'card',
-                )} a round · ${setSummary(profile.settings.setIds)}`}
-              />
-              <EditIcon color="action" sx={{ ml: 1 }} />
-            </ListItemButton>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <ListItemText
+                  sx={{ mt: 0.5 }}
+                  primary={profile.name}
+                  secondary={`${PROMPT_MODE_LABELS[profile.settings.promptMode]} · ${profile.settings.choiceCount} choices · ${plural(
+                    profile.settings.roundSize,
+                    'card',
+                  )} a round · ${setSummary(profile.settings.setIds)}`}
+                />
+                {profile.lastAdjustment && Date.now() - profile.lastAdjustment.at < RECENT_ADJUSTMENT_MS && (
+                  <Typography variant="body2" sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start', mt: 0.5 }}>
+                    <TuneIcon fontSize="small" color="primary" sx={{ mt: '1px' }} aria-hidden />
+                    {adjustmentNote(profile.name, profile.lastAdjustment)}
+                  </Typography>
+                )}
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<InsightsIcon />}
+                    onClick={() => setShowingProgress(profile)}
+                    aria-label={`${profile.name}'s progress`}
+                  >
+                    Progress
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon />}
+                    onClick={() => onEditChild(profile)}
+                    aria-label={`${profile.name}'s settings`}
+                  >
+                    Settings
+                  </Button>
+                </Stack>
+              </Box>
+            </ListItem>
           ))}
         </List>
       )}
+      <ChildProgressDialog
+        profile={showingProgress}
+        cards={cards}
+        sets={showingProgress ? practicedSets(showingProgress) : []}
+        onClose={() => setShowingProgress(null)}
+      />
     </Stack>
   );
 }
 
 function SettingsTab({
   speakOnFlip,
+  sayIt,
+  onSayItChange,
   missingStarterCount,
   onSpeakOnFlipChange,
   onRestoreStarters,
@@ -583,6 +680,17 @@ function SettingsTab({
         />
         <Typography variant="body2" color="text.secondary">
           Uses your recording when a card has one, and the device&apos;s voice when it doesn&apos;t.
+        </Typography>
+      </Box>
+
+      <Box>
+        <FormControlLabel
+          control={<Switch checked={sayIt} onChange={(event) => onSayItChange(event.target.checked)} />}
+          label="Show a Say it button on cards"
+        />
+        <Typography variant="body2" color="text.secondary">
+          Kids can record themselves saying the word, then hear their voice next to yours. Recordings aren&apos;t
+          saved. Needs the microphone, so the first time a grown-up may need to allow it.
         </Typography>
       </Box>
 

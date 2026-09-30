@@ -1,6 +1,6 @@
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { Alert, Box, Button, Container, Snackbar, Stack, Typography } from '@mui/material';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { unlockAudio } from './audio/sound';
 import { AppHeader } from './components/AppHeader';
 import { CardEditor } from './components/CardEditor';
@@ -12,14 +12,31 @@ import { PracticePanel } from './components/PracticePanel';
 import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
+import { GameReward } from './components/GameParts';
+import { ListenGame } from './components/ListenGame';
+import { MemoryGame } from './components/MemoryGame';
+import { OddOneOutGame } from './components/OddOneOutGame';
+import { StickerBook } from './components/StickerBook';
+import { buildOddOneOut, distinctCards, GameKind, oddOneOutBelonging } from './flashcards/games';
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
+import { recordRound } from './flashcards/difficulty';
 import { LibrarySet, prepareLibrarySet } from './flashcards/library';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
-import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
+import { BackupError } from './flashcards/backup';
+import { listenForOpenedFiles, takeSharedFile } from './flashcards/incomingFiles';
+import { createSetPackage, IncomingSet, parseSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
 import { STORAGE_KEYS } from './flashcards/storageKeys';
-import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
+import { awardSticker, practiceStreak, recordPracticeDay } from './flashcards/stickers';
+import {
+  ChildProfile,
+  DifficultyChange,
+  FlashcardData,
+  FlashcardSet,
+  Sticker,
+  UNCATEGORIZED_SET_ID,
+} from './flashcards/types';
 import { RemoveSetOptions, useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useHashRoute } from './hooks/useHashRoute';
@@ -45,9 +62,15 @@ const emptyStateSx = {
 type PracticeRound = {
   profileId: string;
   cardIds: string[];
+  /** Cards to introduce before the questions. */
+  newCardIds: string[];
   /** Cards the wrong answers are drawn from. */
   poolIds: string[];
   seed: number;
+  /** A change to the number of choices made when the round ended. */
+  difficultyChange?: DifficultyChange | null;
+  /** The sticker earned for finishing, and the days-in-a-row count. */
+  reward?: { sticker: Sticker; streak: number } | null;
 };
 
 type ChildDialogState = {
@@ -76,6 +99,7 @@ export default function App() {
   // Sets hidden from kids. Hidden (rather than shown) ids are saved so new sets show up by default.
   const [hiddenSetIds, setHiddenSetIds] = useLocalStorageState<string[]>(STORAGE_KEYS.hiddenSets, []);
   const [speakOnFlip, setSpeakOnFlip] = useLocalStorageState(STORAGE_KEYS.speakOnFlip, true);
+  const [sayIt, setSayIt] = useLocalStorageState(STORAGE_KEYS.sayIt, true);
   const [lastBackupAt, setLastBackupAt] = useLocalStorageState<number | null>(STORAGE_KEYS.lastBackupAt, null);
   const [parentUnlocked, setParentUnlocked] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -84,6 +108,11 @@ export default function App() {
   const [round, setRound] = useState<PracticeRound | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [childDialog, setChildDialog] = useState<ChildDialogState>({ open: false, key: 0, profile: null });
+  // Each game played gets a fresh key, so "Play again" deals a new one.
+  const [gameKey, setGameKey] = useState(0);
+  const [gameReward, setGameReward] = useState<GameReward | null>(null);
+  // A set file shared to the app or opened with it, shown in Grown-ups › Sets once unlocked.
+  const [incomingSet, setIncomingSet] = useState<IncomingSet | null>(null);
 
   const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
     usePwa();
@@ -134,7 +163,7 @@ export default function App() {
     const cover = [...firstOfEach, ...playCards.filter((card) => !firstOfEach.includes(card))].slice(0, 4);
     return [{ id: ALL_CARDS_ID, name: 'All cards', cards: playCards, cover }, ...tiles];
   }, [availableSets, playableSetIds, sortedCards, playCards]);
-  const openSetId = route.name === 'set' ? route.setId : null;
+  const openSetId = route.name === 'set' || route.name === 'game' ? route.setId : null;
   const openTile = useMemo<SetTile | null>(() => {
     if (openSetId === null) return null;
     const tile = setTiles.find((candidate) => candidate.id === openSetId);
@@ -142,6 +171,25 @@ export default function App() {
     // With a single set there's no "All cards" tile, but its link should still work.
     return openSetId === ALL_CARDS_ID && playCards.length > 0 ? { id: ALL_CARDS_ID, name: 'All cards', cards: playCards } : null;
   }, [openSetId, setTiles, playCards]);
+
+  // Cards from the other sets kids can see, where odd one out finds its odd ones.
+  const otherPlayCards = useMemo(
+    () => (openTile ? playCards.filter((card) => !openTile.cards.includes(card)) : []),
+    [openTile, playCards],
+  );
+  const availableGames = useMemo<GameKind[]>(() => {
+    if (!openTile || distinctCards(openTile.cards).length < 2) return [];
+    const games: GameKind[] = ['memory', 'listen'];
+    const isRealSet = openTile.id !== ALL_CARDS_ID && openTile.id !== UNCATEGORIZED_SET_ID;
+    const settings = activeProfile?.settings ?? null;
+    if (
+      isRealSet &&
+      buildOddOneOut(openTile.cards, otherPlayCards, { questions: 1, belonging: oddOneOutBelonging(settings), seed: 1 }).length > 0
+    ) {
+      games.push('odd-one-out');
+    }
+    return games;
+  }, [openTile, otherPlayCards, activeProfile]);
 
   const practicePool = useMemo(
     () => (activeProfile ? filterCardsForSets(cards, activeProfile.settings.setIds ?? playableSetIds) : []),
@@ -162,6 +210,7 @@ export default function App() {
   }, [activeProfile, availableSets]);
   const roundCards = useMemo(() => cardsForIds(round?.cardIds ?? [], cards), [cards, round]);
   const roundPool = useMemo(() => cardsForIds(round?.poolIds ?? [], cards), [cards, round]);
+  const roundNewCards = useMemo(() => cardsForIds(round?.newCardIds ?? [], cards), [cards, round]);
   const hasOwnContent = profiles.length > 0 || cards.some((card) => !STARTER_CARD_IDS.has(card.id));
   const showBackupReminder = hasOwnContent && (lastBackupAt === null || Date.now() - lastBackupAt > BACKUP_REMINDER_MS);
   const defaultAvatar =
@@ -172,6 +221,23 @@ export default function App() {
     if (route.name !== 'practice') setRound(null);
   }, [route.name]);
 
+  useEffect(() => {
+    const receive = (text: string) => {
+      try {
+        setIncomingSet({ pkg: parseSetPackage(text) });
+      } catch (error) {
+        setIncomingSet({ error: error instanceof BackupError ? error.message : "Couldn't read that file." });
+      }
+      navigate({ name: 'manage' });
+    };
+    takeSharedFile()
+      .then((text) => text && receive(text))
+      .catch((error) => console.warn('Unable to check for a shared file', error));
+    listenForOpenedFiles(receive);
+  }, [navigate]);
+
+  const clearIncomingSet = useCallback(() => setIncomingSet(null), []);
+
   // Grown-ups mode locks again as soon as you leave it.
   useEffect(() => {
     if (route.name !== 'manage') setParentUnlocked(false);
@@ -179,11 +245,15 @@ export default function App() {
 
   // A practice or set screen with nothing to show (e.g. opened by reloading the page) goes home.
   useEffect(() => {
-    if (loading) return;
-    if ((route.name === 'practice' && !round) || (route.name === 'set' && !openTile)) {
+    if (loading || profilesLoading) return;
+    if (
+      (route.name === 'practice' && !round) ||
+      ((route.name === 'set' || route.name === 'game') && !openTile) ||
+      (route.name === 'stickers' && !activeProfile)
+    ) {
       navigate({ name: 'home' }, { replace: true });
     }
-  }, [loading, route.name, round, openTile, navigate]);
+  }, [loading, profilesLoading, route.name, round, openTile, activeProfile, navigate]);
 
   const openGrownUps = () => navigate({ name: 'manage' });
 
@@ -250,7 +320,7 @@ export default function App() {
   };
 
   const handleSaveBackup = async () => {
-    const result = await saveBackupFile(await createBackup({ hiddenSetIds, speakOnFlip }));
+    const result = await saveBackupFile(await createBackup({ hiddenSetIds, speakOnFlip, sayIt }));
     if (result !== 'cancelled') setLastBackupAt(Date.now());
     return result;
   };
@@ -269,11 +339,47 @@ export default function App() {
     setPracticeError(null);
     setRound({
       profileId: activeProfile.id,
-      cardIds: buildRound(pool, progress, activeProfile.settings.roundSize),
+      ...buildRound(pool, progress, activeProfile.settings.roundSize, {
+        introduceNew: activeProfile.settings.introduceNew,
+      }),
       poolIds: pool.map((card) => card.id),
       seed: Date.now(),
     });
     if (route.name !== 'practice') navigate({ name: 'practice' });
+  };
+
+  const handleRoundComplete = ({ results, perfect }: { results: boolean[]; perfect: boolean }) => {
+    if (!activeProfile) return;
+    const adjusted = results.length > 0 ? recordRound(activeProfile, results) : { profile: activeProfile, change: null };
+    const { profile, sticker } = awardSticker(recordPracticeDay(adjusted.profile), { perfect });
+    setRound((current) =>
+      current
+        ? { ...current, difficultyChange: adjusted.change, reward: { sticker, streak: practiceStreak(profile.practiceDays) } }
+        : current,
+    );
+    saveProfile(profile).catch((error) => {
+      console.error('Unable to save how the round went', error);
+      setPracticeError("Couldn't save how this round went.");
+    });
+  };
+
+  const startGame = (game: GameKind) => {
+    if (!openTile) return;
+    // Starting a game is a tap, which is when browsers allow sound to be switched on.
+    unlockAudio();
+    setGameReward(null);
+    setGameKey((key) => key + 1);
+    if (route.name === 'game') return;
+    navigate({ name: 'game', game, setId: openTile.id });
+  };
+
+  const handleGameFinish = ({ perfect }: { perfect: boolean }) => {
+    if (!activeProfile) return;
+    const { profile, sticker } = awardSticker(recordPracticeDay(activeProfile), { perfect });
+    setGameReward({ sticker, streak: practiceStreak(profile.practiceDays) });
+    saveProfile(profile).catch((error) => {
+      console.error('Unable to save the sticker', error);
+    });
   };
 
   const handleAnswer = (cardId: string, correct: boolean) => {
@@ -313,14 +419,38 @@ export default function App() {
         key={round.seed}
         profile={activeProfile}
         cards={roundCards}
+        newCards={roundNewCards}
         pool={roundPool}
         seed={round.seed}
         onAnswer={handleAnswer}
+        onComplete={handleRoundComplete}
+        difficultyChange={round.difficultyChange}
+        reward={round.reward}
+        onOpenStickers={() => navigate({ name: 'stickers' })}
         onRestart={() => startPractice(roundPool)}
         onExit={goBack}
         error={practiceError}
       />
     );
+  } else if (route.name === 'game' && openTile) {
+    const gameProps = {
+      title: openTile.name,
+      profile: activeProfile,
+      reward: gameReward,
+      onFinish: handleGameFinish,
+      onPlayAgain: () => startGame(route.game),
+      onExit: goBack,
+    };
+    screen =
+      route.game === 'memory' ? (
+        <MemoryGame key={gameKey} cards={openTile.cards} {...gameProps} />
+      ) : route.game === 'listen' ? (
+        <ListenGame key={gameKey} cards={openTile.cards} {...gameProps} />
+      ) : (
+        <OddOneOutGame key={gameKey} setCards={openTile.cards} otherCards={otherPlayCards} {...gameProps} />
+      );
+  } else if (route.name === 'stickers' && activeProfile) {
+    screen = <StickerBook profile={activeProfile} streak={practiceStreak(activeProfile.practiceDays)} onBack={goBack} />;
   } else if (route.name === 'manage' && parentUnlocked) {
     screen = (
       <>
@@ -343,9 +473,13 @@ export default function App() {
           onShareSet={handleShareSet}
           onImportSet={handleImportSet}
           onAddLibrarySet={handleAddLibrarySet}
+          incomingSet={incomingSet}
+          onIncomingSetHandled={clearIncomingSet}
           onAddChild={openAddChild}
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}
+          sayIt={sayIt}
+          onSayItChange={setSayIt}
           onRestoreStarters={handleRestoreStarters}
           lastBackupAt={lastBackupAt}
           showBackupReminder={showBackupReminder}
@@ -363,6 +497,9 @@ export default function App() {
         practiceProfile={progressReady ? activeProfile : null}
         onBack={goBack}
         onPractice={() => startPractice(openTile.cards)}
+        games={availableGames}
+        onPlayGame={startGame}
+        sayIt={sayIt}
       />
     );
   } else {
@@ -383,6 +520,9 @@ export default function App() {
           onSelectProfile={selectProfile}
           onAddProfile={openAddChild}
           onStart={() => startPractice(practicePool)}
+          stickerCount={activeProfile?.stickers?.length ?? 0}
+          streak={practiceStreak(activeProfile?.practiceDays)}
+          onOpenStickers={() => navigate({ name: 'stickers' })}
           error={profilesError}
         />
 

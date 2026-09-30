@@ -9,6 +9,7 @@ export const LIBRARY_SUBJECTS = [
   { id: 'math', label: 'Math' },
   { id: 'reading', label: 'Reading' },
   { id: 'languages', label: 'World languages' },
+  { id: 'world', label: 'The world' },
   { id: 'computers', label: 'Computers' },
   { id: 'music', label: 'Music and sports' },
 ] as const;
@@ -16,7 +17,7 @@ export const LIBRARY_SUBJECTS = [
 export type LibrarySubject = (typeof LIBRARY_SUBJECTS)[number]['id'];
 
 /** A card as the library describes it. It becomes a regular card when a grown-up adds the set. */
-export type LibraryCard = Pick<FlashcardData, 'name' | 'imageUrl' | 'frontText' | 'backgroundColor' | 'lang'> & {
+export type LibraryCard = Pick<FlashcardData, 'name' | 'imageUrl' | 'frontText' | 'backgroundColor' | 'lang' | 'prompt'> & {
   /** Unique within its set and part of the card's id, so adding a set again doesn't make copies. */
   key: string;
 };

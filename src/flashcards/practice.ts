@@ -1,5 +1,5 @@
 import { buildPracticeQueue, ProgressByCard } from './review';
-import { FlashcardData, PracticeSettings, PromptMode, UNCATEGORIZED_SET_ID } from './types';
+import { ChildProfile, FlashcardData, PracticeSettings, PromptMode, UNCATEGORIZED_SET_ID } from './types';
 
 export type AvatarOption = { emoji: string; label: string; color: string };
 
@@ -115,7 +115,19 @@ export const PROMPT_MODE_LABELS: Record<PromptMode, string> = {
 };
 
 export function defaultPracticeSettings(): PracticeSettings {
-  return { setIds: null, ...AGE_PRESETS[0].settings, readAloud: true, soundEffects: true };
+  return {
+    setIds: null,
+    ...AGE_PRESETS[0].settings,
+    readAloud: true,
+    soundEffects: true,
+    introduceNew: true,
+    autoAdjust: true,
+  };
+}
+
+/** Fills in settings added after a child's profile was saved. */
+export function withDefaultSettings(profile: ChildProfile): ChildProfile {
+  return { ...profile, settings: { ...defaultPracticeSettings(), ...profile.settings } };
 }
 
 export function filterCardsForSets(cards: FlashcardData[], setIds: string[] | null) {
@@ -159,9 +171,43 @@ export function shuffle<T>(items: T[], random: () => number = Math.random): T[] 
 }
 
 /** Picks the cards for one round: missed and due cards first, then the ones due soonest. */
-export function buildRound(cards: FlashcardData[], progress: ProgressByCard, roundSize: number) {
+/** The most new cards a round introduces (2 in a round of 5, 3 in 10, 5 in 20), so rounds stay mostly familiar. */
+export const newCardsPerRound = (roundSize: number) => Math.max(2, Math.round(roundSize / 4));
+
+export type RoundPlan = {
+  /** The questions, in the order they're asked. */
+  cardIds: string[];
+  /** Cards the child hasn't met, shown before the questions start (all also in cardIds). */
+  newCardIds: string[];
+};
+
+/**
+ * Picks the cards for a round: the ones due for review first. With introduceNew, cards the child has
+ * never answered are limited to a few per round, taken in the order their set shows them, and are
+ * introduced before the questions.
+ */
+export function buildRound(
+  cards: FlashcardData[],
+  progress: ProgressByCard,
+  roundSize: number,
+  { introduceNew = false, random = Math.random }: { introduceNew?: boolean; random?: () => number } = {},
+): RoundPlan {
   const { queue } = buildPracticeQueue(cards, progress);
-  return shuffle(queue.slice(0, roundSize).map((card) => card.id));
+  if (!introduceNew) {
+    return { cardIds: shuffle(queue.slice(0, roundSize), random).map((card) => card.id), newCardIds: [] };
+  }
+  const isNew = (card: FlashcardData) => !progress[card.id];
+  const fresh = cards
+    .filter(isNew)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, Math.min(newCardsPerRound(roundSize), roundSize));
+  const familiar = queue.filter((card) => !isNew(card)).slice(0, roundSize - fresh.length);
+  const order = shuffle([...familiar, ...fresh], random);
+  // Start the questions with a familiar card when there is one, so a new card isn't asked the moment
+  // it's been shown.
+  const firstFamiliar = order.findIndex((card) => !isNew(card));
+  if (firstFamiliar > 0) [order[0], order[firstFamiliar]] = [order[firstFamiliar], order[0]];
+  return { cardIds: order.map((card) => card.id), newCardIds: fresh.map((card) => card.id) };
 }
 
 const normalizeName = (name: string) => name.trim().toLowerCase();

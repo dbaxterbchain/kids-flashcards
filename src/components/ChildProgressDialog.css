@@ -1,0 +1,132 @@
+/* Progress colors: one blue ramp for how far along a card is (validated as an ordinal ramp), the
+   reserved "serious" status color for tricky cards (always shown with its label and an icon), and a
+   pale step of the same blue as the track for cards not started. */
+.progress-tiles,
+.progress-bar,
+.progress-key {
+  --progress-mastered: #1c5cab;
+  --progress-learning: #6da7ec;
+  --progress-tricky: #ec835a;
+  --progress-new: #cde2fb;
+}
+
+.progress-tiles {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 600px) {
+  .progress-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.progress-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+}
+
+.progress-tile__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #52514e;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.progress-tile__value {
+  color: #0b0b0b;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.progress-key {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.progress-key--mastered,
+.progress-bar__segment--mastered {
+  background: var(--progress-mastered);
+}
+
+.progress-key--learning,
+.progress-bar__segment--learning {
+  background: var(--progress-learning);
+}
+
+.progress-key--tricky,
+.progress-bar__segment--tricky {
+  background: var(--progress-tricky);
+}
+
+.progress-key--new,
+.progress-bar__segment--new {
+  background: var(--progress-new);
+}
+
+/* A 12px bar: square at the start, rounded at the end, with 2px of white between segments. */
+.progress-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 0 4px 4px 0;
+  background: #ffffff;
+}
+
+.progress-bar__segment {
+  min-width: 4px;
+  height: 100%;
+}
+
+.progress-bar__segment:hover {
+  filter: brightness(1.12);
+}
+
+.progress-cards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+}
+
+.progress-cards__card {
+  margin: 0;
+  text-align: center;
+}
+
+.progress-cards__front {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.progress-legend {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  color: #52514e;
+  font-size: 0.85rem;
+}
+
+.progress-legend dt {
+  font-weight: 700;
+}
+
+.progress-legend dd {
+  margin: 0;
+}

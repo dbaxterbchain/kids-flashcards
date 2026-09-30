@@ -18,6 +18,15 @@ export default defineConfig(({ mode }) => ({
         orientation: 'portrait',
         background_color: '#f9fbff',
         theme_color: '#0f172a',
+        // Set files can be shared to the installed app (Android) or opened with it (computers).
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: { files: [{ name: 'file', accept: ['application/json', '.json'] }] },
+        },
+        file_handlers: [{ action: '/', accept: { 'application/json': ['.json'] } }],
+        launch_handler: { client_mode: 'focus-existing' },
         icons: [
           {
             src: '/icons/icon-192.png',
@@ -41,6 +50,8 @@ export default defineConfig(({ mode }) => ({
         mode: mode === 'production' ? 'production' : 'development',
         sourcemap: mode !== 'production',
         navigateFallback: '/offline.html',
+        // Receives set files shared to the app (see public/share-target-sw.js).
+        importScripts: ['share-target-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,mp3,woff2}'],
         runtimeCaching: [
           {

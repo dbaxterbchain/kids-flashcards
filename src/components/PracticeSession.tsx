@@ -1,4 +1,5 @@
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -7,22 +8,32 @@ import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@m
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildOptions, hashString, promptSideFor } from '../flashcards/practice';
-import { ChildProfile, FlashcardData } from '../flashcards/types';
+import { ChildProfile, DifficultyChange, FlashcardData, Sticker } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
 import { Flashcard } from './Flashcard';
+import { StickerBadge } from './StickerBook';
 import './PracticeSession.css';
 
 type PracticeSessionProps = {
   profile: ChildProfile;
   /** The cards in this round, in the order they're asked. */
   cards: FlashcardData[];
+  /** Cards the child hasn't met, introduced before the questions and then asked with two choices. */
+  newCards?: FlashcardData[];
   /** Cards to draw the wrong answers from. */
   pool: FlashcardData[];
   seed: number;
   /** Called once per card with whether the first try was right. */
   onAnswer: (cardId: string, correct: boolean) => void;
+  /** Called when the round ends, with the first-try results for cards that weren't new. */
+  onComplete?: (round: { results: boolean[]; perfect: boolean }) => void;
+  /** An automatic change to the number of choices made when this round ended. */
+  difficultyChange?: DifficultyChange | null;
+  /** The sticker earned for this round, and the days-in-a-row count including today. */
+  reward?: { sticker: Sticker; streak: number } | null;
+  onOpenStickers?: () => void;
   onRestart: () => void;
   onExit: () => void;
   error?: string | null;
@@ -36,8 +47,23 @@ const summaryHeadline = (correct: number, total: number) => {
   return 'Good practice';
 };
 
-export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestart, onExit, error }: PracticeSessionProps) {
+export function PracticeSession({
+  profile,
+  cards,
+  newCards = [],
+  pool,
+  seed,
+  onAnswer,
+  onComplete,
+  difficultyChange,
+  reward,
+  onOpenStickers,
+  onRestart,
+  onExit,
+  error,
+}: PracticeSessionProps) {
   const { settings } = profile;
+  const [introIndex, setIntroIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const [wrongIds, setWrongIds] = useState<string[]>([]);
   const [solved, setSolved] = useState(false);
@@ -45,12 +71,21 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
   const [complete, setComplete] = useState(false);
   const nextButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const card = complete ? null : cards[index] ?? null;
+  const introCard = complete ? null : newCards[introIndex] ?? null;
+  const card = complete || introCard ? null : cards[index] ?? null;
   const side = promptSideFor(settings.promptMode, index);
+  // A card that was just introduced is asked with only two choices.
+  const isNewCard = card !== null && newCards.some((newCard) => newCard.id === card.id);
+  const choiceCount = isNewCard ? Math.min(2, settings.choiceCount) : settings.choiceCount;
   const options = useMemo(
-    () => (card ? buildOptions(card, pool, settings.choiceCount, seed + hashString(card.id)) : []),
-    [card, pool, settings.choiceCount, seed],
+    () => (card ? buildOptions(card, pool, choiceCount, seed + hashString(card.id)) : []),
+    [card, pool, choiceCount, seed],
   );
+
+  // Say each new card as it's introduced.
+  useEffect(() => {
+    if (introCard && settings.readAloud) speakCard(introCard);
+  }, [introCard, settings.readAloud]);
 
   // Say the word when a "find the picture" question appears.
   useEffect(() => {
@@ -91,6 +126,12 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
     if (index + 1 >= cards.length) {
       setComplete(true);
       if (settings.soundEffects) playSound('finish');
+      onComplete?.({
+        results: cards
+          .filter((roundCard) => results[roundCard.id] !== undefined && !newCards.some((newCard) => newCard.id === roundCard.id))
+          .map((roundCard) => results[roundCard.id]),
+        perfect: cards.every((roundCard) => results[roundCard.id]),
+      });
       return;
     }
     setIndex(index + 1);
@@ -98,10 +139,27 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
     setSolved(false);
   };
 
+  const nextIntro = () => {
+    stopSpeaking();
+    setIntroIndex(introIndex + 1);
+  };
+
   const exit = () => {
     stopSpeaking();
     onExit();
   };
+
+  const header = (
+    <Stack direction="row" alignItems="center" spacing={1.5}>
+      <ChildAvatar profile={profile} size={40} />
+      <Typography variant="h6" component="h2" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
+        {profile.name}
+      </Typography>
+      <IconButton aria-label="Stop practicing" onClick={exit}>
+        <CloseIcon />
+      </IconButton>
+    </Stack>
+  );
 
   if (complete) {
     const correctCount = cards.filter((roundCard) => results[roundCard.id]).length;
@@ -114,9 +172,42 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
           <Typography variant="h4" component="h2">
             {summaryHeadline(correctCount, cards.length)}, {profile.name}!
           </Typography>
+          {reward && (
+            <Stack spacing={1} alignItems="center">
+              <span className="sticker-reward">
+                <StickerBadge sticker={reward.sticker} size={96} />
+              </span>
+              <Typography sx={{ fontWeight: 800 }}>
+                {reward.sticker.shiny ? 'A shiny sticker for a perfect round!' : 'You earned a sticker!'}
+              </Typography>
+            </Stack>
+          )}
           <Typography variant="h6" component="p" color="text.secondary">
             ⭐ {correctCount} of {cards.length} right on the first try
           </Typography>
+          {reward && reward.streak >= 2 && (
+            <Typography variant="h6" component="p" sx={{ fontWeight: 800 }}>
+              🌟 {reward.streak} days in a row!
+            </Typography>
+          )}
+          {difficultyChange && difficultyChange.to > difficultyChange.from && (
+            <Typography className="practice-level-up" component="p">
+              🌟 You&apos;re getting so good! Next time, pick from {difficultyChange.to}{' '}
+              {settings.promptMode === 'find-picture' ? 'pictures' : settings.promptMode === 'name-picture' ? 'words' : 'answers'}.
+            </Typography>
+          )}
+          {newCards.length > 0 && (
+            <Stack spacing={1} alignItems="center">
+              <Typography variant="body2" color="text.secondary">
+                New today:
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center">
+                {newCards.map((newCard) => (
+                  <Chip key={newCard.id} icon={<AutoAwesomeIcon />} label={newCard.name} color="secondary" variant="outlined" />
+                ))}
+              </Stack>
+            </Stack>
+          )}
           {missed.length > 0 && (
             <Stack spacing={1} alignItems="center">
               <Typography variant="body2" color="text.secondary">
@@ -133,6 +224,11 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
             <Button variant="contained" size="large" startIcon={<ReplayIcon />} onClick={onRestart}>
               Play again
             </Button>
+            {onOpenStickers && (
+              <Button variant="outlined" size="large" onClick={onOpenStickers}>
+                My stickers
+              </Button>
+            )}
             <Button variant="outlined" size="large" onClick={exit}>
               Done
             </Button>
@@ -147,17 +243,53 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
     );
   }
 
+  if (introCard) {
+    const last = introIndex + 1 >= newCards.length;
+    return (
+      <Box component="section" aria-label={`New cards for ${profile.name}`} className="practice">
+        {header}
+        <Stack spacing={1.5} alignItems="center" className="practice-intro">
+          <Chip
+            icon={<AutoAwesomeIcon />}
+            label={newCards.length > 1 ? `New card ${introIndex + 1} of ${newCards.length}` : 'New card'}
+            color="secondary"
+            sx={{ fontWeight: 800 }}
+          />
+          <ButtonBase
+            key={introCard.id}
+            focusRipple
+            className="practice-intro__card"
+            onClick={() => speakCard(introCard)}
+            aria-label={`Hear ${introCard.name}`}
+          >
+            <CardFront card={introCard} alt="" />
+          </ButtonBase>
+          <p className="practice-intro__word">{introCard.name}</p>
+          <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(introCard)}>
+            Hear it again
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            endIcon={<ArrowForwardIcon />}
+            onClick={nextIntro}
+            sx={{ minWidth: 170, fontSize: '1.15rem' }}
+          >
+            {last ? "Let's play!" : 'Next'}
+          </Button>
+        </Stack>
+        {error && (
+          <Typography variant="body2" color="error" textAlign="center">
+            {error}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Box component="section" aria-label={`Practice for ${profile.name}`} className="practice">
-      <Stack direction="row" alignItems="center" spacing={1.5}>
-        <ChildAvatar profile={profile} size={40} />
-        <Typography variant="h6" component="h2" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
-          {profile.name}
-        </Typography>
-        <IconButton aria-label="Stop practicing" onClick={exit}>
-          <CloseIcon />
-        </IconButton>
-      </Stack>
+      {header}
 
       <Box className="practice-dots" role="img" aria-label={`Card ${index + 1} of ${cards.length}`}>
         {cards.map((roundCard, cardIndex) => {
@@ -203,6 +335,7 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
             {solved ? (
               <>
                 <span className="practice-status__text practice-status__text--correct">Yes! That&apos;s {card.name}!</span>
+                {card.prompt && <span className="practice-prompt">💬 {card.prompt}</span>}
                 <Button
                   ref={nextButtonRef}
                   variant="contained"

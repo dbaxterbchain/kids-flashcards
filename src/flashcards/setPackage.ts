@@ -7,6 +7,9 @@ import { FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './types';
 const SET_FORMAT = 'kids-flashcards-set';
 const SET_VERSION = 1;
 
+/** A set file that reached the app from outside (shared to it, or opened with it). */
+export type IncomingSet = { pkg: SetPackage } | { error: string };
+
 /** One set and its cards (pictures and recordings included), as shared between families. */
 export type SetPackage = {
   format: typeof SET_FORMAT;

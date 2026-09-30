@@ -1,6 +1,7 @@
 import { buildNumberCard, numberPalette, SVG_FONT_STACK } from './defaultData';
 import { slugifySetName } from './fileUtils';
 import { LibraryCard, LibrarySet } from './library';
+import { FLAGS, flagImage } from './libraryFlags';
 
 // Ready-made sets for the set library. Pictures are emoji (drawn by the device's own emoji font) or
 // small generated drawings, so the whole library costs almost nothing to download or store.
@@ -29,6 +30,13 @@ function textCards(pairs: Pair[], { lang, background }: TextOptions = {}): Libra
 /** Cards whose whole front is a color. */
 function colorCards(pairs: [hex: string, name: string][], lang?: string): LibraryCard[] {
   return pairs.map(([hex, name]) => ({ key: slugifySetName(name), name, imageUrl: '', backgroundColor: hex, lang }));
+}
+
+/** Adds talk-about-it questions to cards, by card name. */
+function withPrompts(cards: LibraryCard[], prompts: Record<string, string>): LibraryCard[] {
+  const unknown = Object.keys(prompts).filter((name) => !cards.some((card) => card.name === name));
+  if (unknown.length > 0) throw new Error(`Prompts for cards that don't exist: ${unknown.join(', ')}`);
+  return cards.map((card) => (prompts[card.name] ? { ...card, prompt: prompts[card.name] } : card));
 }
 
 function pictureCards(items: { name: string; image: string }[], background: string): LibraryCard[] {
@@ -187,6 +195,65 @@ function planetCards(): LibraryCard[] {
     ],
     '#0b1026',
   );
+}
+
+// --- Plants and life cycles ---------------------------------------------------------------------
+
+type PlantPart = 'roots' | 'stem' | 'leaves' | 'flower';
+
+// A plant in the soil with one part in full color and the rest faded, so that part stands out.
+function plantImage(part: PlantPart) {
+  const show = (name: PlantPart) => `opacity="${name === part ? 1 : 0.22}"`;
+  const petals = Array.from({ length: 8 }, (_, index) => {
+    const { x, y } = onCircle(150, 78, 22, index / 8);
+    return `<ellipse cx="${x}" cy="${y}" rx="11" ry="19" fill="#f472b6" transform="rotate(${index * 45} ${x} ${y})"/>`;
+  }).join('');
+  return svg(
+    `<rect x="0" y="200" width="300" height="100" fill="#a16207"/><rect x="0" y="200" width="300" height="6" fill="#854d0e"/>` +
+      `<g ${show('roots')} stroke="#fde68a" stroke-width="6" stroke-linecap="round" fill="none"><path d="M150 202 L150 250"/><path d="M150 214 Q128 230 112 262"/><path d="M150 220 Q176 236 192 266"/><path d="M150 238 Q140 256 130 284"/><path d="M150 236 Q164 256 172 284"/></g>` +
+      `<g ${show('stem')}><path d="M150 202 L150 96" stroke="#15803d" stroke-width="11" stroke-linecap="round"/></g>` +
+      `<g ${show('leaves')} fill="#22c55e"><path d="M150 164 Q108 158 90 126 Q132 122 150 164 Z"/><path d="M150 138 Q192 130 210 98 Q168 96 150 138 Z"/></g>` +
+      `<g ${show('flower')}>${petals}<circle cx="150" cy="78" r="14" fill="#facc15"/></g>`,
+  );
+}
+
+function chrysalisImage() {
+  return svg(
+    `<path d="M36 62 Q150 40 264 66" stroke="#78350f" stroke-width="11" fill="none" stroke-linecap="round"/>` +
+      `<line x1="150" y1="54" x2="150" y2="88" stroke="#a8a29e" stroke-width="3"/>` +
+      `<path d="M150 86 C190 106 194 182 150 250 C106 182 110 106 150 86 Z" fill="#65a30d"/>` +
+      `<path d="M150 96 C170 116 172 170 150 226" stroke="#a3e635" stroke-width="6" fill="none" stroke-linecap="round"/>` +
+      `<circle cx="136" cy="124" r="4.5" fill="#facc15"/><circle cx="164" cy="124" r="4.5" fill="#facc15"/><circle cx="150" cy="118" r="4.5" fill="#facc15"/>`,
+  );
+}
+
+function tadpoleImage() {
+  const bubbles = [
+    [60, 70, 8],
+    [84, 44, 5],
+    [236, 226, 9],
+    [258, 200, 5],
+    [70, 236, 6],
+  ]
+    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.8"/>`)
+    .join('');
+  return svg(
+    `${bubbles}<path d="M160 136 C198 112 214 172 246 148 C264 136 280 146 288 154 C268 162 252 178 230 174 C204 170 194 164 160 168 Z" fill="#334155"/>` +
+      `<ellipse cx="124" cy="152" rx="50" ry="40" fill="#334155"/><circle cx="104" cy="138" r="10" fill="#ffffff"/><circle cx="101" cy="137" r="5" fill="#0f172a"/>`,
+  );
+}
+
+type MixedItem = { name: string; emoji?: string; image?: string };
+
+/** Cards with an emoji or a drawing on the front, in the order given. */
+function mixedCards(items: MixedItem[]): LibraryCard[] {
+  return items.map(({ name, emoji, image }, index) => ({
+    key: slugifySetName(name),
+    name,
+    imageUrl: image ?? '',
+    frontText: emoji,
+    backgroundColor: PASTELS[index % PASTELS.length],
+  }));
 }
 
 // --- Numbers 11-20 -------------------------------------------------------------------------------
@@ -410,6 +477,72 @@ const letters: Pair[] = range(0, 25).map((index) => {
   return [`${letter}${letter.toLowerCase()}`, letter];
 });
 
+// Pictures whose names start with a clear sound, for matching a picture to its first letter.
+const firstLetters: Pair[] = [
+  ['🐻', 'B', 'b'],
+  ['🐱', 'C', 'c'],
+  ['🐶', 'D', 'd'],
+  ['🐸', 'F', 'f'],
+  ['🍇', 'G', 'g'],
+  ['🎩', 'H', 'h'],
+  ['🧃', 'J', 'j'],
+  ['🪁', 'K', 'k'],
+  ['🦁', 'L', 'l'],
+  ['🌙', 'M', 'm'],
+  ['👃', 'N', 'n'],
+  ['🐷', 'P', 'p'],
+  ['🐰', 'R', 'r'],
+  ['🧦', 'S', 's'],
+  ['🐯', 'T', 't'],
+  ['🎻', 'V', 'v'],
+  ['🐋', 'W', 'w'],
+  ['🦓', 'Z', 'z'],
+];
+const FIRST_LETTER_WORDS: Record<string, string> = {
+  B: 'Bear',
+  C: 'Cat',
+  D: 'Dog',
+  F: 'Frog',
+  G: 'Grapes',
+  H: 'Hat',
+  J: 'Juice',
+  K: 'Kite',
+  L: 'Lion',
+  M: 'Moon',
+  N: 'Nose',
+  P: 'Pig',
+  R: 'Rabbit',
+  S: 'Socks',
+  T: 'Tiger',
+  V: 'Violin',
+  W: 'Whale',
+  Z: 'Zebra',
+};
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** Short names on the front ("Mon"), full names on the back, asking what comes next. */
+function calendarCards(names: string[], unit: 'day' | 'month', background: string): LibraryCard[] {
+  return textCards(
+    names.map((name): Pair => [name.slice(0, 3), name]),
+    { background },
+  ).map((card) => ({ ...card, prompt: `What ${unit} comes after ${card.name}?` }));
+}
+
 // From the Dolch sight word lists, most common first.
 const sightWords = (words: string[]): Pair[] => words.map((word) => [word, word]);
 
@@ -423,18 +556,32 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'animals',
     minAge: 2,
     description: 'Cow, pig, sheep and the rest of the barnyard.',
-    cards: textCards([
-      ['🐮', 'Cow'],
-      ['🐷', 'Pig'],
-      ['🐑', 'Sheep'],
-      ['🐐', 'Goat'],
-      ['🐴', 'Horse'],
-      ['🐔', 'Chicken'],
-      ['🐓', 'Rooster'],
-      ['🦆', 'Duck'],
-      ['🦃', 'Turkey'],
-      ['🦙', 'Llama'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['🐮', 'Cow'],
+        ['🐷', 'Pig'],
+        ['🐑', 'Sheep'],
+        ['🐐', 'Goat'],
+        ['🐴', 'Horse'],
+        ['🐔', 'Chicken'],
+        ['🐓', 'Rooster'],
+        ['🦆', 'Duck'],
+        ['🦃', 'Turkey'],
+        ['🦙', 'Llama'],
+      ]),
+      {
+        Cow: 'What sound does a cow make? What do we get from cows?',
+        Pig: 'What sound does a pig make? Why do pigs roll in mud?',
+        Sheep: 'Sheep have woolly coats. What can we make from wool?',
+        Goat: 'What sound does a goat make?',
+        Horse: 'What sound does a horse make? Would you like to ride one?',
+        Chicken: 'What do chickens lay?',
+        Rooster: 'Roosters crow in the morning. Can you crow like a rooster?',
+        Duck: 'What sound does a duck make? Where do ducks swim?',
+        Turkey: 'What sound does a turkey make?',
+        Llama: 'Llamas have long necks. Who else has a long neck?',
+      },
+    ),
   },
   {
     id: 'wild-animals',
@@ -571,21 +718,38 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'everyday',
     minAge: 2,
     description: 'Apples, bananas, grapes and other favorites.',
-    cards: textCards([
-      ['🍎', 'Apple'],
-      ['🍌', 'Banana'],
-      ['🍇', 'Grapes'],
-      ['🍓', 'Strawberry'],
-      ['🍊', 'Orange'],
-      ['🍉', 'Watermelon'],
-      ['🍍', 'Pineapple'],
-      ['🍒', 'Cherries'],
-      ['🍐', 'Pear'],
-      ['🍑', 'Peach'],
-      ['🥝', 'Kiwi'],
-      ['🥭', 'Mango'],
-      ['🍋', 'Lemon'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['🍎', 'Apple'],
+        ['🍌', 'Banana'],
+        ['🍇', 'Grapes'],
+        ['🍓', 'Strawberry'],
+        ['🍊', 'Orange'],
+        ['🍉', 'Watermelon'],
+        ['🍍', 'Pineapple'],
+        ['🍒', 'Cherries'],
+        ['🍐', 'Pear'],
+        ['🍑', 'Peach'],
+        ['🥝', 'Kiwi'],
+        ['🥭', 'Mango'],
+        ['🍋', 'Lemon'],
+      ]),
+      {
+        Apple: 'What colors can apples be?',
+        Banana: 'Which animal loves bananas?',
+        Grapes: 'Grapes grow in bunches. How many can you count?',
+        Strawberry: 'Strawberries have seeds on the outside! Can you spot them?',
+        Orange: 'Orange is a fruit and a color! What else is orange?',
+        Watermelon: 'What color is a watermelon inside?',
+        Pineapple: 'Is a pineapple spiky or smooth?',
+        Cherries: 'How many cherries are there?',
+        Pear: 'Is a pear crunchy or soft?',
+        Peach: 'Is a peach fuzzy or smooth?',
+        Kiwi: 'What color is a kiwi inside?',
+        Mango: 'Have you ever tasted a mango?',
+        Lemon: 'Are lemons sweet or sour?',
+      },
+    ),
   },
   {
     id: 'vegetables',
@@ -636,20 +800,36 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'everyday',
     minAge: 2,
     description: 'Cars, trucks, trains, planes and boats.',
-    cards: textCards([
-      ['🚗', 'Car'],
-      ['🚌', 'Bus'],
-      ['🚒', 'Fire truck'],
-      ['🚓', 'Police car'],
-      ['🚑', 'Ambulance'],
-      ['🚜', 'Tractor'],
-      ['🚂', 'Train'],
-      ['✈️', 'Airplane'],
-      ['🚁', 'Helicopter'],
-      ['🚲', 'Bike'],
-      ['⛵', 'Boat'],
-      ['🚚', 'Truck'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['🚗', 'Car'],
+        ['🚌', 'Bus'],
+        ['🚒', 'Fire truck'],
+        ['🚓', 'Police car'],
+        ['🚑', 'Ambulance'],
+        ['🚜', 'Tractor'],
+        ['🚂', 'Train'],
+        ['✈️', 'Airplane'],
+        ['🚁', 'Helicopter'],
+        ['🚲', 'Bike'],
+        ['⛵', 'Boat'],
+        ['🚚', 'Truck'],
+      ]),
+      {
+        Car: 'Where would you like to drive?',
+        Bus: 'Who rides on a bus?',
+        'Fire truck': 'What sound does a fire truck make?',
+        'Police car': 'What color are the lights on a police car?',
+        Ambulance: 'Who does an ambulance help?',
+        Tractor: 'Where do tractors work?',
+        Train: 'What sound does a train make?',
+        Airplane: 'Where would you fly in an airplane?',
+        Helicopter: 'How is a helicopter different from an airplane?',
+        Bike: 'How many wheels does a bike have?',
+        Boat: 'Where do boats go?',
+        Truck: 'What could a truck carry?',
+      },
+    ),
   },
   {
     id: 'clothes',
@@ -700,18 +880,32 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'everyday',
     minAge: 2,
     description: 'Eyes, ears, nose, mouth and more.',
-    cards: textCards([
-      ['👀', 'Eyes'],
-      ['👂', 'Ear'],
-      ['👃', 'Nose'],
-      ['👄', 'Mouth'],
-      ['🦷', 'Tooth'],
-      ['👅', 'Tongue'],
-      ['✋', 'Hand'],
-      ['💪', 'Arm'],
-      ['🦵', 'Leg'],
-      ['🦶', 'Foot'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['👀', 'Eyes'],
+        ['👂', 'Ear'],
+        ['👃', 'Nose'],
+        ['👄', 'Mouth'],
+        ['🦷', 'Tooth'],
+        ['👅', 'Tongue'],
+        ['✋', 'Hand'],
+        ['💪', 'Arm'],
+        ['🦵', 'Leg'],
+        ['🦶', 'Foot'],
+      ]),
+      {
+        Eyes: 'What can you see right now?',
+        Ear: 'What can you hear right now?',
+        Nose: "What's your favorite smell?",
+        Mouth: 'What do we use our mouths for?',
+        Tooth: 'How do we keep our teeth clean?',
+        Tongue: 'Can you stick out your tongue?',
+        Hand: 'How many fingers are on one hand?',
+        Arm: 'Can you stretch your arms up high?',
+        Leg: 'Can you stand on one leg?',
+        Foot: 'How many toes do you have?',
+      },
+    ),
   },
   {
     id: 'more-colors',
@@ -740,20 +934,36 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'people',
     minAge: 2,
     description: 'Words for how we feel, to help kids name their feelings.',
-    cards: textCards([
-      ['😀', 'Happy'],
-      ['😢', 'Sad'],
-      ['😠', 'Angry'],
-      ['😨', 'Scared'],
-      ['😮', 'Surprised'],
-      ['😴', 'Sleepy'],
-      ['🤒', 'Sick'],
-      ['🤪', 'Silly'],
-      ['😌', 'Calm'],
-      ['😟', 'Worried'],
-      ['🤩', 'Excited'],
-      ['🥰', 'Loved'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['😀', 'Happy'],
+        ['😢', 'Sad'],
+        ['😠', 'Angry'],
+        ['😨', 'Scared'],
+        ['😮', 'Surprised'],
+        ['😴', 'Sleepy'],
+        ['🤒', 'Sick'],
+        ['🤪', 'Silly'],
+        ['😌', 'Calm'],
+        ['😟', 'Worried'],
+        ['🤩', 'Excited'],
+        ['🥰', 'Loved'],
+      ]),
+      {
+        Happy: 'What makes you happy?',
+        Sad: 'What can we do when someone feels sad?',
+        Angry: 'What helps you calm down when you feel angry?',
+        Scared: 'What helps you feel brave?',
+        Surprised: "What's the best surprise you've ever had?",
+        Sleepy: 'What do you do to get ready for bed?',
+        Sick: 'What helps us feel better when we are sick?',
+        Silly: 'Can you make a silly face?',
+        Calm: 'Can you take a big, slow breath?',
+        Worried: 'Who can you talk to when you feel worried?',
+        Excited: 'What are you excited about?',
+        Loved: 'Who loves you?',
+      },
+    ),
   },
   {
     id: 'community-helpers',
@@ -761,20 +971,36 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'people',
     minAge: 3,
     description: 'Firefighters, doctors, teachers and other people who help us.',
-    cards: textCards([
-      ['👩‍🚒', 'Firefighter'],
-      ['👮', 'Police officer'],
-      ['👨‍⚕️', 'Doctor'],
-      ['👩‍🏫', 'Teacher'],
-      ['👨‍🍳', 'Chef'],
-      ['👩‍🌾', 'Farmer'],
-      ['👨‍🚀', 'Astronaut'],
-      ['👩‍🔧', 'Mechanic'],
-      ['👨‍🎨', 'Artist'],
-      ['👩‍🔬', 'Scientist'],
-      ['👷', 'Builder'],
-      ['👩‍✈️', 'Pilot'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['👩‍🚒', 'Firefighter'],
+        ['👮', 'Police officer'],
+        ['👨‍⚕️', 'Doctor'],
+        ['👩‍🏫', 'Teacher'],
+        ['👨‍🍳', 'Chef'],
+        ['👩‍🌾', 'Farmer'],
+        ['👨‍🚀', 'Astronaut'],
+        ['👩‍🔧', 'Mechanic'],
+        ['👨‍🎨', 'Artist'],
+        ['👩‍🔬', 'Scientist'],
+        ['👷', 'Builder'],
+        ['👩‍✈️', 'Pilot'],
+      ]),
+      {
+        Firefighter: 'How do firefighters help us?',
+        'Police officer': 'How do police officers help people?',
+        Doctor: 'What does a doctor do when you are sick?',
+        Teacher: 'What do you like to learn about?',
+        Chef: 'What would you cook?',
+        Farmer: 'What does a farmer grow?',
+        Astronaut: 'Where do astronauts go?',
+        Mechanic: 'What does a mechanic fix?',
+        Artist: 'What would you like to draw?',
+        Scientist: 'What would you like to find out?',
+        Builder: 'What would you build?',
+        Pilot: 'Where would you fly?',
+      },
+    ),
   },
 
   // Science and nature
@@ -784,18 +1010,32 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 3,
     description: 'Sunny, rainy, snowy and stormy days.',
-    cards: textCards([
-      ['☀️', 'Sunny'],
-      ['🌧️', 'Rainy'],
-      ['☁️', 'Cloudy'],
-      ['❄️', 'Snowy'],
-      ['⛈️', 'Stormy'],
-      ['🌬️', 'Windy'],
-      ['🌫️', 'Foggy'],
-      ['🌈', 'Rainbow'],
-      ['⚡', 'Lightning'],
-      ['🌪️', 'Tornado'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['☀️', 'Sunny'],
+        ['🌧️', 'Rainy'],
+        ['☁️', 'Cloudy'],
+        ['❄️', 'Snowy'],
+        ['⛈️', 'Stormy'],
+        ['🌬️', 'Windy'],
+        ['🌫️', 'Foggy'],
+        ['🌈', 'Rainbow'],
+        ['⚡', 'Lightning'],
+        ['🌪️', 'Tornado'],
+      ]),
+      {
+        Sunny: 'What do we wear on a sunny day?',
+        Rainy: 'What do we need when it rains?',
+        Cloudy: 'What shapes can you see in the clouds?',
+        Snowy: 'What can you build with snow?',
+        Stormy: 'Where do we stay safe in a storm?',
+        Windy: 'What does the wind blow around?',
+        Foggy: 'Is it easy to see in the fog?',
+        Rainbow: 'Can you name the colors of the rainbow?',
+        Lightning: 'What sound comes after lightning?',
+        Tornado: 'A tornado spins around. Can you spin around?',
+      },
+    ),
   },
   {
     id: 'nature',
@@ -824,13 +1064,22 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 3,
     description: 'See, hear, smell, taste and touch.',
-    cards: textCards([
-      ['👀', 'See'],
-      ['👂', 'Hear'],
-      ['👃', 'Smell'],
-      ['👅', 'Taste'],
-      ['✋', 'Touch'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['👀', 'See'],
+        ['👂', 'Hear'],
+        ['👃', 'Smell'],
+        ['👅', 'Taste'],
+        ['✋', 'Touch'],
+      ]),
+      {
+        See: 'What can you see right now?',
+        Hear: 'What can you hear right now?',
+        Smell: "What's your favorite smell?",
+        Taste: 'Is your favorite food sweet, salty or sour?',
+        Touch: 'What feels soft? What feels rough?',
+      },
+    ),
   },
   {
     id: 'space',
@@ -924,6 +1173,118 @@ export const LIBRARY_SETS: LibrarySet[] = [
         ['Au', 'Gold'],
       ],
       { background: '#e0f2fe' },
+    ),
+  },
+
+  {
+    id: 'seasons',
+    name: 'Seasons',
+    subject: 'science',
+    minAge: 4,
+    description: 'Spring, summer, fall or winter? Each card shows something to sort.',
+    cards: textCards([
+      ['🌷', 'Spring', 'tulip'],
+      ['🐣', 'Spring', 'chick'],
+      ['🏖️', 'Summer', 'beach'],
+      ['🍉', 'Summer', 'watermelon'],
+      ['🍂', 'Fall', 'leaves'],
+      ['🎃', 'Fall', 'pumpkin'],
+      ['⛄', 'Winter', 'snowman'],
+      ['🧣', 'Winter', 'scarf'],
+    ]),
+  },
+  {
+    id: 'life-cycles',
+    name: 'Life cycles',
+    subject: 'science',
+    minAge: 4,
+    description: 'How butterflies, frogs, chickens and plants grow, one stage at a time.',
+    cards: withPrompts(
+      mixedCards([
+        { name: 'Egg', emoji: '🥚' },
+        { name: 'Caterpillar', emoji: '🐛' },
+        { name: 'Chrysalis', image: chrysalisImage() },
+        { name: 'Butterfly', emoji: '🦋' },
+        { name: 'Tadpole', image: tadpoleImage() },
+        { name: 'Frog', emoji: '🐸' },
+        { name: 'Chick', emoji: '🐣' },
+        { name: 'Hen', emoji: '🐔' },
+        { name: 'Seed', emoji: '🌰' },
+        { name: 'Sprout', emoji: '🌱' },
+        { name: 'Flower', emoji: '🌻' },
+      ]),
+      {
+        Egg: 'What can hatch out of an egg?',
+        Caterpillar: 'What will this caterpillar turn into?',
+        Chrysalis: "What's changing inside a chrysalis?",
+        Butterfly: 'A butterfly started as an egg. What came next?',
+        Tadpole: 'What will this tadpole grow into?',
+        Frog: 'Frogs start as eggs in the water. What hatches out?',
+        Chick: 'What did this chick hatch from?',
+        Hen: 'What does a hen lay?',
+        Seed: 'What does a seed need to grow?',
+        Sprout: 'What will this sprout grow into?',
+        Flower: 'Where do new seeds come from?',
+      },
+    ),
+  },
+  {
+    id: 'plant-parts',
+    name: 'Parts of a plant',
+    subject: 'science',
+    minAge: 4,
+    description: 'Roots, stem, leaves and flower, each shown in color on the plant, plus seeds and fruit.',
+    cards: withPrompts(
+      [
+        ...pictureCards(
+          [
+            { name: 'Roots', image: plantImage('roots') },
+            { name: 'Stem', image: plantImage('stem') },
+            { name: 'Leaves', image: plantImage('leaves') },
+            { name: 'Flower', image: plantImage('flower') },
+          ],
+          '#e0f2fe',
+        ),
+        ...textCards([
+          ['🌰', 'Seed'],
+          ['🍎', 'Fruit'],
+        ]),
+      ],
+      {
+        Roots: 'Roots drink water from the soil. Where are they?',
+        Stem: 'The stem carries water up the plant.',
+        Leaves: 'Leaves use sunlight to make food for the plant.',
+        Flower: 'Which insects visit flowers?',
+        Seed: 'What grows from a seed?',
+        Fruit: 'Fruit holds the seeds. Can you find seeds in an apple?',
+      },
+    ),
+  },
+  {
+    id: 'human-body',
+    name: 'The human body',
+    subject: 'science',
+    minAge: 5,
+    description: 'Brain, heart, lungs, bones and more: what is inside us.',
+    cards: withPrompts(
+      textCards([
+        ['🧠', 'Brain'],
+        ['🫀', 'Heart'],
+        ['🫁', 'Lungs'],
+        ['🦴', 'Bones'],
+        ['🦷', 'Teeth'],
+        ['💪', 'Muscles'],
+        ['🩸', 'Blood'],
+      ]),
+      {
+        Brain: 'Your brain helps you think. What are you thinking about?',
+        Heart: 'Put your hand on your chest. Can you feel your heart beat?',
+        Lungs: 'Take a big breath. Can you feel your lungs fill up?',
+        Bones: 'Bones hold you up. Can you feel the bones in your hand?',
+        Teeth: 'How do we keep our teeth strong?',
+        Muscles: 'Muscles help you move. Can you make a muscle?',
+        Blood: 'Your heart pumps blood all around your body.',
+      },
     ),
   },
 
@@ -1027,25 +1388,68 @@ export const LIBRARY_SETS: LibrarySet[] = [
     cards: textCards(letters),
   },
   {
+    id: 'first-letters',
+    name: 'First letters',
+    subject: 'reading',
+    minAge: 4,
+    description: 'Which letter does each picture start with? Kids hear a letter and find a picture that starts with it.',
+    cards: textCards(firstLetters).map((card) => ({
+      ...card,
+      prompt: `${FIRST_LETTER_WORDS[card.name]} starts with ${card.name}. What else starts with ${card.name}?`,
+    })),
+  },
+  {
+    id: 'days-of-the-week',
+    name: 'Days of the week',
+    subject: 'reading',
+    minAge: 5,
+    description: 'Monday to Sunday, from their short names.',
+    cards: calendarCards(DAYS, 'day', '#e0f2fe'),
+  },
+  {
+    id: 'months',
+    name: 'Months of the year',
+    subject: 'reading',
+    minAge: 6,
+    description: 'January to December, from their short names.',
+    cards: calendarCards(MONTHS, 'month', '#fce7f3'),
+  },
+  {
     id: 'opposites',
     name: 'Opposites',
     subject: 'reading',
     minAge: 4,
     description: 'Big and small, hot and cold, fast and slow.',
-    cards: textCards([
-      ['🐘', 'Big'],
-      ['🐭', 'Small'],
-      ['🔥', 'Hot'],
-      ['🧊', 'Cold'],
-      ['☀️', 'Day'],
-      ['🌙', 'Night'],
-      ['🐇', 'Fast'],
-      ['🐢', 'Slow'],
-      ['⬆️', 'Up'],
-      ['⬇️', 'Down'],
-      ['📢', 'Loud'],
-      ['🤫', 'Quiet'],
-    ]),
+    cards: withPrompts(
+      textCards([
+        ['🐘', 'Big'],
+        ['🐭', 'Small'],
+        ['🔥', 'Hot'],
+        ['🧊', 'Cold'],
+        ['☀️', 'Day'],
+        ['🌙', 'Night'],
+        ['🐇', 'Fast'],
+        ['🐢', 'Slow'],
+        ['⬆️', 'Up'],
+        ['⬇️', 'Down'],
+        ['📢', 'Loud'],
+        ['🤫', 'Quiet'],
+      ]),
+      {
+        Big: "What's bigger than you?",
+        Small: "What's smaller than you?",
+        Hot: 'What is hot? How do we stay safe near hot things?',
+        Cold: 'What is cold?',
+        Day: 'What do you do during the day?',
+        Night: 'What do you do at night?',
+        Fast: 'Can you run fast?',
+        Slow: 'Can you walk very slowly?',
+        Up: 'Can you reach up high?',
+        Down: 'Can you crouch down low?',
+        Loud: 'Can you clap loudly?',
+        Quiet: 'Can you whisper?',
+      },
+    ),
   },
   {
     id: 'sight-words-1',
@@ -1235,6 +1639,19 @@ export const LIBRARY_SETS: LibrarySet[] = [
         ['🍰', 'le gâteau'],
       ],
       { lang: 'fr-FR' },
+    ),
+  },
+
+  // The world
+  {
+    id: 'flags',
+    name: 'Flags of the world',
+    subject: 'world',
+    minAge: 5,
+    description: 'Seventeen flags, from Japan and Brazil to Canada and India.',
+    cards: pictureCards(
+      FLAGS.map((flag) => ({ name: flag.name, image: flagImage(flag) })),
+      '#f1f5f9',
     ),
   },
 

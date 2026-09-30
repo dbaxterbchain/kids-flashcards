@@ -39,6 +39,7 @@ describe('sanitizing values from files', () => {
       audioUrl: WAV,
       backgroundColor: 'url(x)',
       lang: 'es-MX',
+      prompt: '  Where does Grandma live?  ',
       extra: 'ignored',
       createdAt: 5,
     });
@@ -50,6 +51,7 @@ describe('sanitizing values from files', () => {
       createdAt: 5,
       audioUrl: WAV,
       lang: 'es-MX',
+      prompt: 'Where does Grandma live?',
       setIds: [],
       backgroundColor: undefined,
       review: undefined,
@@ -92,13 +94,45 @@ describe('parseBackup', () => {
     expect(parsed.cards).toHaveLength(2);
     expect(parsed.cards[0]).toMatchObject({ imageUrl: PNG, audioUrl: WAV, backgroundColor: 'pink', setIds: ['family'] });
     expect(parsed.sets).toEqual([{ id: 'family', name: 'Family' }]);
-    expect(parsed.settings).toEqual({ hiddenSetIds: ['family'], speakOnFlip: false });
+    expect(parsed.settings).toEqual({ hiddenSetIds: ['family'], speakOnFlip: false, sayIt: true });
   });
 
   it('keeps children, fixing settings that are out of range', () => {
     const [profile] = parseBackup(JSON.stringify(backup)).profiles;
     expect(profile.avatarImage).toBeUndefined();
-    expect(profile.settings).toMatchObject({ choiceCount: 4, promptMode: 'find-picture', roundSize: 50, readAloud: false });
+    expect(profile.settings).toMatchObject({
+      choiceCount: 4,
+      promptMode: 'find-picture',
+      roundSize: 50,
+      readAloud: false,
+      introduceNew: true,
+      autoAdjust: true,
+    });
+  });
+
+  it('keeps how a child has been doing', () => {
+    const withHistory = {
+      ...backup,
+      profiles: [
+        {
+          ...backup.profiles[0],
+          recentResults: [true, 'yes', false],
+          lastAdjustment: { at: 5, from: 2, to: 3 },
+          stickers: [{ emoji: '🦊', at: 1 }, { emoji: '🌈', at: 2, shiny: true }, { emoji: 7 }],
+          practiceDays: ['2026-03-01', 'yesterday', '2026-03-02'],
+        },
+        { ...backup.profiles[0], id: 'p2', lastAdjustment: { at: 5, from: 2, to: 9 } },
+      ],
+    };
+    const [first, second] = parseBackup(JSON.stringify(withHistory)).profiles;
+    expect(first.recentResults).toEqual([true, false]);
+    expect(first.lastAdjustment).toEqual({ at: 5, from: 2, to: 3 });
+    expect(first.stickers).toEqual([
+      { emoji: '🦊', at: 1 },
+      { emoji: '🌈', at: 2, shiny: true },
+    ]);
+    expect(first.practiceDays).toEqual(['2026-03-01', '2026-03-02']);
+    expect(second.lastAdjustment).toBeUndefined();
   });
 
   it('drops progress for cards or children that no longer exist', () => {

@@ -82,6 +82,14 @@
   font-weight: 800;
 }
 
+.practice-prompt {
+  flex-basis: 100%;
+  order: 1;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .practice-status__text--correct {
   color: #2e7d32;
 }
@@ -264,4 +272,56 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Scoped under .practice-intro so these win over MUI's ButtonBase reset. */
+.practice-intro .practice-intro__card {
+  position: relative;
+  width: min(100%, 340px);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 24px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  animation: practice-intro-pop 0.35s ease-out;
+}
+
+.practice-intro .practice-intro__card.Mui-focusVisible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.practice-intro__word {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(2rem, 9vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@keyframes practice-intro-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-intro .practice-intro__card {
+    animation: none;
+  }
+}
+
+.practice-level-up {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: #fef3c7;
+  color: #78350f;
+  font-weight: 800;
 }

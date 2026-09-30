@@ -1,0 +1,60 @@
+.say-it__card {
+  position: relative;
+  width: min(100%, 200px);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+}
+
+.say-it__word.MuiTypography-root {
+  margin: 0;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.say-it__button.MuiButtonBase-root,
+.say-it__button {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+}
+
+.say-it__button .MuiSvgIcon-root {
+  font-size: 48px;
+}
+
+.say-it__button--recording.MuiButtonBase-root {
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+  animation: say-it-pulse 1.2s ease-out infinite;
+}
+
+.say-it__button--playing {
+  background: linear-gradient(135deg, #60a5fa, #818cf8);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.3);
+}
+
+@keyframes say-it-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+  }
+  to {
+    box-shadow: 0 0 0 22px rgba(220, 38, 38, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .say-it__button--recording.MuiButtonBase-root {
+    animation: none;
+  }
+}
