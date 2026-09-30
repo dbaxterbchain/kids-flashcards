@@ -9,6 +9,7 @@ export const LIBRARY_SUBJECTS = [
   { id: 'math', label: 'Math' },
   { id: 'reading', label: 'Reading' },
   { id: 'languages', label: 'World languages' },
+  { id: 'world', label: 'The world' },
   { id: 'computers', label: 'Computers' },
   { id: 'music', label: 'Music and sports' },
 ] as const;

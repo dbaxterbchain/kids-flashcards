@@ -1,78 +1,31 @@
 # Roadmap
 
-Ideas for making Kids Flashcards more fun and more effective for kids from age 2 up, and easier for the grown-ups who set it up. Each idea has a short sketch of how it could work. Nothing here is committed to a date.
+Ideas for making Kids Flashcards more fun and more effective for kids from age 2 up, and easier for the grown-ups who set it up.
 
-## Recently done
-- **Set library:** 53 ready-made sets, from farm animals and feelings to fractions, sight words, Spanish, French and binary. Parents add a set in one tap.
-- **Share and import sets:** send any set as one file, with its pictures, recordings, colors and languages.
+## Done
+
+### Most recent
+- **Learn before quiz:** cards a child hasn't met are shown and said first, a few per round (2 in a round of 5, 3 in 10, 5 in 20), then asked with just two choices.
+- **Progress for grown-ups:** each child's cards as mastered, learning, tricky or not started, set by set, with the tricky cards to look at together. Answering a card before it's due no longer counts as spaced practice.
+- **Auto-adjusting difficulty:** after each round, an answer choice is added when a child gets nearly everything right, or removed when it's been hard. Grown-ups are told and can switch it off.
+- **Talk-about-it questions** on cards, written in the card editor and included with nine everyday library sets.
+- **Stickers and streaks:** a sticker for every finished round or game (shiny ones for perfect rounds), a sticker book for each child, and a days-in-a-row streak that never mentions a missed day.
+- **New games:** memory match, listen and find, and odd one out, played from any set's page.
+- **"Say it":** kids record themselves saying a word and hear their voice next to yours. Nothing is saved.
+- **Print a set** as two-sided flashcards, six to a page, with cut lines.
+- **Open shared sets straight from Messages or email:** the installed app is in Android's share sheet for set files, and computers can open set files with it.
+- **More library sets:** first letters, seasons, life cycles, parts of a plant, the human body, days of the week, months of the year, and drawn flags of the world (61 sets in all).
+
+### Earlier
+- **Set library:** ready-made sets across animals, everyday words, feelings, science, math, reading, languages and computers.
+- **Share and import sets** as files, with pictures, recordings, colors and languages.
 - **Read-aloud language per card,** so Spanish words are read by a Spanish voice.
 - **Themed and photo avatars** for each child.
 - **Automated tests and CI:** unit tests, phone and desktop browser tests, run on every pull request.
 
-## More effective
-
-### Learn before quiz
-Young kids learn better when they aren't quizzed on something they've never seen.
-- A card a child hasn't met yet is first introduced: shown big, flipped and read aloud.
-- It comes back later in the same round as an easy question with only two choices.
-- Each round mixes in one or two new cards at most, so rounds stay mostly familiar.
-- Each child's progress would record when a card was introduced.
-
-### Progress for grown-ups
-Show grown-ups how each child is doing, set by set.
-- **Mastered:** answered right over several days, so reviews are a week or more apart.
-- **Learning:** seen, but not yet solid.
-- **Tricky:** missed more than once recently. These are good cards to talk about together.
-- **Not started.**
-
-The spaced-repetition data behind this is already saved for each child.
-
-### Auto-adjusting difficulty
-- Track each child's recent answers (say, the last 20).
-- If they're getting nearly everything right, add an answer choice or switch on mixed questions.
-- If they're struggling, take a choice away.
-- Tell the grown-ups when this happens, and let them switch it off.
-
-### Talk-about-it prompts
-- An optional question on the back of a card, like "What sound does a dog make?" or "Where do we see Grandma?"
-- Talking about a card builds more vocabulary than naming it.
-- Library sets could come with prompts, and parents could write their own in the card editor.
-- Prompts would be saved in backups and shared set files.
-
-## More fun
-
-### Stickers and streaks
-- Each child earns a sticker for every finished round and collects them in their own sticker book.
-- A gentle streak ("3 days in a row!") that never scolds a missed day.
-
-### New games
-- **Memory match:** flip two cards at a time to find the pairs. Toddlers match picture to picture; readers match picture to word.
-- **Listen and find:** sound only, with no written word on screen, for real pre-readers. A big speaker button replays the word.
-- **Odd one out:** three or four pictures, one from a different set ("Which one isn't a fruit?"). This works especially well with library sets.
-
-### "Say it" mode
-- The child taps the microphone and says the word.
-- The app plays their voice back next to the grown-up's recording (or the device's voice).
-- No speech recognition or grading; the point is practice and giggles.
-- The child's recordings aren't kept unless a grown-up chooses to keep them.
-
-## Practical
-
-### Print a set
-- Print any set as real two-sided flashcards.
-- Fronts go on one page and backs on the next, mirrored so they line up when printed double-sided, with cut lines.
-- Uses the browser's print dialog, which can also save a PDF.
-
-### Open shared sets straight from Messages or email
-- Let the installed app open set files directly, instead of saving them first and choosing Import a set.
-- This would use the share target on Android and file handling on computers.
-
-## More library sets
-Ideas that didn't make the first batch:
-- Letter sounds (phonics).
-- Rhyming words.
-- Life cycles (egg, caterpillar, chrysalis, butterfly).
-- Parts of a plant.
-- The human body.
-- Days, months and seasons.
-- Continents and flags. These would need to be drawn, since flag emoji don't show on Windows.
+## Ideas for later
+- **Practice the tricky cards:** a button in a child's progress view that starts a round of just their tricky cards.
+- **Library updates:** cards added from the library before it gained talk-about-it questions don't have them. An "update from the library" option could add them without touching a family's own edits.
+- **Sharing on iPhone and iPad:** iOS doesn't let web apps receive shared files yet, so set files still go through Save to Files and Import a set. A share link could make this easier.
+- **Sync between a family's devices:** everything stays on one device today, and moving it means a backup file. Sync would need accounts and a server, so it's a bigger step with privacy to think through.
+- **More library sets:** rhyming words, and continents drawn as maps.
