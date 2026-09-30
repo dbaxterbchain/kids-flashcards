@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { readFileSync } from 'fs';
 
 /** Answers the grown-ups question to open Grown-ups mode. */
 async function openGrownUps(page: Page) {
@@ -137,6 +138,38 @@ test('a shared set file can be imported', async ({ page }, testInfo) => {
   await expect(preview.getByText(/so this one will be called “Shapes \(2\)”/)).toBeVisible();
   await preview.getByRole('button', { name: 'Add set' }).click();
   await expect(page.getByText('Shapes (2)', { exact: true })).toBeVisible();
+});
+
+test('a set shared to the installed app opens its preview', async ({ page }, testInfo) => {
+  // Make a set file to share.
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Sets' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Share Colors' }).click()]);
+  const file = testInfo.outputPath('colors.json');
+  await download.saveAs(file);
+  const text = readFileSync(file, 'utf8');
+
+  // Android's share sheet posts the file to the app; the service worker keeps it for the app.
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload();
+  await page.evaluate(async (json) => {
+    const form = new FormData();
+    form.append('file', new File([json], 'colors-flashcards.json', { type: 'application/json' }));
+    await fetch('/share-target', { method: 'POST', body: form });
+  }, text);
+
+  await page.goto('/');
+  const gate = page.getByRole('dialog');
+  const question = await gate.getByText(/What is \d+ × \d+\?/).innerText();
+  const [, a, b] = question.match(/(\d+) × (\d+)/) ?? [];
+  await gate.getByLabel('Answer').fill(String(Number(a) * Number(b)));
+  await gate.getByRole('button', { name: 'Continue' }).click();
+  const preview = page.getByRole('dialog');
+  await expect(preview.getByText('Add this set?')).toBeVisible();
+  await expect(preview.getByText('10 cards')).toBeVisible();
+  await preview.getByRole('button', { name: 'Add set' }).click();
+  await expect(page.getByText('Colors (2)', { exact: true })).toBeVisible();
 });
 
 test('a backup brings everything back', async ({ page }, testInfo) => {

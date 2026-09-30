@@ -1,6 +1,6 @@
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { Alert, Box, Button, Container, Snackbar, Stack, Typography } from '@mui/material';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { unlockAudio } from './audio/sound';
 import { AppHeader } from './components/AppHeader';
 import { CardEditor } from './components/CardEditor';
@@ -24,7 +24,9 @@ import { recordRound } from './flashcards/difficulty';
 import { LibrarySet, prepareLibrarySet } from './flashcards/library';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
-import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
+import { BackupError } from './flashcards/backup';
+import { listenForOpenedFiles, takeSharedFile } from './flashcards/incomingFiles';
+import { createSetPackage, IncomingSet, parseSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
 import { STORAGE_KEYS } from './flashcards/storageKeys';
 import { awardSticker, practiceStreak, recordPracticeDay } from './flashcards/stickers';
 import {
@@ -109,6 +111,8 @@ export default function App() {
   // Each game played gets a fresh key, so "Play again" deals a new one.
   const [gameKey, setGameKey] = useState(0);
   const [gameReward, setGameReward] = useState<GameReward | null>(null);
+  // A set file shared to the app or opened with it, shown in Grown-ups › Sets once unlocked.
+  const [incomingSet, setIncomingSet] = useState<IncomingSet | null>(null);
 
   const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
     usePwa();
@@ -216,6 +220,23 @@ export default function App() {
   useEffect(() => {
     if (route.name !== 'practice') setRound(null);
   }, [route.name]);
+
+  useEffect(() => {
+    const receive = (text: string) => {
+      try {
+        setIncomingSet({ pkg: parseSetPackage(text) });
+      } catch (error) {
+        setIncomingSet({ error: error instanceof BackupError ? error.message : "Couldn't read that file." });
+      }
+      navigate({ name: 'manage' });
+    };
+    takeSharedFile()
+      .then((text) => text && receive(text))
+      .catch((error) => console.warn('Unable to check for a shared file', error));
+    listenForOpenedFiles(receive);
+  }, [navigate]);
+
+  const clearIncomingSet = useCallback(() => setIncomingSet(null), []);
 
   // Grown-ups mode locks again as soon as you leave it.
   useEffect(() => {
@@ -452,6 +473,8 @@ export default function App() {
           onShareSet={handleShareSet}
           onImportSet={handleImportSet}
           onAddLibrarySet={handleAddLibrarySet}
+          incomingSet={incomingSet}
+          onIncomingSetHandled={clearIncomingSet}
           onAddChild={openAddChild}
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}

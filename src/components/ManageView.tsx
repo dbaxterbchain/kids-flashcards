@@ -37,11 +37,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { Backup, BackupError, SaveResult } from '../flashcards/backup';
 import { LibrarySet } from '../flashcards/library';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
-import { parseSetPackage, SetPackage } from '../flashcards/setPackage';
+import { IncomingSet, parseSetPackage, SetPackage } from '../flashcards/setPackage';
 import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
 import { RemoveSetOptions } from '../hooks/useCardLibrary';
 import { BackupSection } from './BackupSection';
@@ -78,6 +78,9 @@ type ManageViewProps = {
   /** Adds a shared set as a new set. */
   onImportSet: (pkg: SetPackage) => Promise<FlashcardSet>;
   onAddLibrarySet: (entry: LibrarySet) => Promise<void>;
+  /** A set file shared to the app or opened with it, to preview and import. */
+  incomingSet?: IncomingSet | null;
+  onIncomingSetHandled?: () => void;
   onAddChild: () => void;
   onEditChild: (profile: ChildProfile) => void;
   onSpeakOnFlipChange: (value: boolean) => void;
@@ -116,7 +119,13 @@ const adjustmentNote = (name: string, { at, from, to }: DifficultyChange) => {
 
 /** The parent-only area for changing cards, sets, children and settings. */
 export function ManageView(props: ManageViewProps) {
-  const [tab, setTab] = useState<ManageTab>('cards');
+  const [tab, setTab] = useState<ManageTab>(props.incomingSet ? 'sets' : 'cards');
+  const hasIncomingSet = Boolean(props.incomingSet);
+
+  // A shared set file opens straight into Sets, where its preview is shown.
+  useEffect(() => {
+    if (hasIncomingSet) setTab('sets');
+  }, [hasIncomingSet]);
   const [savingBackup, setSavingBackup] = useState(false);
   const tabs: { value: ManageTab; label: string }[] = [
     { value: 'cards', label: 'Cards' },
@@ -297,6 +306,8 @@ function SetsTab({
   onShareSet,
   onImportSet,
   onAddLibrarySet,
+  incomingSet,
+  onIncomingSetHandled,
 }: ManageViewProps) {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -367,6 +378,13 @@ function SetsTab({
       setSharingId(null);
     }
   };
+
+  useEffect(() => {
+    if (!incomingSet) return;
+    if ('pkg' in incomingSet) setImporting(incomingSet.pkg);
+    else setMessage({ severity: 'error', text: incomingSet.error });
+    onIncomingSetHandled?.();
+  }, [incomingSet, onIncomingSetHandled]);
 
   const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
