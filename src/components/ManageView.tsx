@@ -3,6 +3,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import InsightsIcon from '@mui/icons-material/Insights';
+import TuneIcon from '@mui/icons-material/Tune';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -40,7 +41,7 @@ import { Backup, BackupError, SaveResult } from '../flashcards/backup';
 import { LibrarySet } from '../flashcards/library';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { parseSetPackage, SetPackage } from '../flashcards/setPackage';
-import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
+import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
 import { RemoveSetOptions } from '../hooks/useCardLibrary';
 import { BackupSection } from './BackupSection';
 import { ChildAvatar } from './ChildAvatar';
@@ -98,6 +99,16 @@ const listSx = { bgcolor: 'background.paper', borderRadius: 2, border: '1px soli
 const hasNoSet = (card: FlashcardData) => !card.setIds || card.setIds.length === 0;
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+// Automatic changes to the number of choices are mentioned for two weeks.
+const RECENT_ADJUSTMENT_MS = 14 * 24 * 60 * 60 * 1000;
+
+const adjustmentNote = (name: string, { at, from, to }: DifficultyChange) => {
+  const when = new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return to > from
+    ? `Now ${to} choices (was ${from}) since ${when}, because ${name} was getting nearly everything right.`
+    : `Now ${to} choices (was ${from}) since ${when}, to make it a bit easier.`;
+};
 
 /** The parent-only area for changing cards, sets, children and settings. */
 export function ManageView(props: ManageViewProps) {
@@ -564,6 +575,12 @@ function ChildrenTab({ cards, profiles, sets, hiddenSetIds, onAddChild, onEditCh
                     'card',
                   )} a round · ${setSummary(profile.settings.setIds)}`}
                 />
+                {profile.lastAdjustment && Date.now() - profile.lastAdjustment.at < RECENT_ADJUSTMENT_MS && (
+                  <Typography variant="body2" sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start', mt: 0.5 }}>
+                    <TuneIcon fontSize="small" color="primary" sx={{ mt: '1px' }} aria-hidden />
+                    {adjustmentNote(profile.name, profile.lastAdjustment)}
+                  </Typography>
+                )}
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   <Button
                     size="small"

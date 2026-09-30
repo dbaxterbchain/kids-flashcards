@@ -8,7 +8,7 @@ import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@m
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildOptions, hashString, promptSideFor } from '../flashcards/practice';
-import { ChildProfile, FlashcardData } from '../flashcards/types';
+import { ChildProfile, DifficultyChange, FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
@@ -26,6 +26,10 @@ type PracticeSessionProps = {
   seed: number;
   /** Called once per card with whether the first try was right. */
   onAnswer: (cardId: string, correct: boolean) => void;
+  /** Called when the round ends, with the first-try results for cards that weren't new. */
+  onComplete?: (results: boolean[]) => void;
+  /** An automatic change to the number of choices made when this round ended. */
+  difficultyChange?: DifficultyChange | null;
   onRestart: () => void;
   onExit: () => void;
   error?: string | null;
@@ -46,6 +50,8 @@ export function PracticeSession({
   pool,
   seed,
   onAnswer,
+  onComplete,
+  difficultyChange,
   onRestart,
   onExit,
   error,
@@ -114,6 +120,11 @@ export function PracticeSession({
     if (index + 1 >= cards.length) {
       setComplete(true);
       if (settings.soundEffects) playSound('finish');
+      onComplete?.(
+        cards
+          .filter((roundCard) => results[roundCard.id] !== undefined && !newCards.some((newCard) => newCard.id === roundCard.id))
+          .map((roundCard) => results[roundCard.id]),
+      );
       return;
     }
     setIndex(index + 1);
@@ -157,6 +168,12 @@ export function PracticeSession({
           <Typography variant="h6" component="p" color="text.secondary">
             ⭐ {correctCount} of {cards.length} right on the first try
           </Typography>
+          {difficultyChange && difficultyChange.to > difficultyChange.from && (
+            <Typography className="practice-level-up" component="p">
+              🌟 You&apos;re getting so good! Next time, pick from {difficultyChange.to}{' '}
+              {settings.promptMode === 'find-picture' ? 'pictures' : settings.promptMode === 'name-picture' ? 'words' : 'answers'}.
+            </Typography>
+          )}
           {newCards.length > 0 && (
             <Stack spacing={1} alignItems="center">
               <Typography variant="body2" color="text.secondary">

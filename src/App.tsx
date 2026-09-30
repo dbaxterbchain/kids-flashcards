@@ -14,12 +14,13 @@ import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
+import { recordRound } from './flashcards/difficulty';
 import { LibrarySet, prepareLibrarySet } from './flashcards/library';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
 import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
 import { STORAGE_KEYS } from './flashcards/storageKeys';
-import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
+import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
 import { RemoveSetOptions, useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useHashRoute } from './hooks/useHashRoute';
@@ -50,6 +51,8 @@ type PracticeRound = {
   /** Cards the wrong answers are drawn from. */
   poolIds: string[];
   seed: number;
+  /** A change to the number of choices made when the round ended. */
+  difficultyChange?: DifficultyChange | null;
 };
 
 type ChildDialogState = {
@@ -281,6 +284,16 @@ export default function App() {
     if (route.name !== 'practice') navigate({ name: 'practice' });
   };
 
+  const handleRoundComplete = (results: boolean[]) => {
+    if (!activeProfile || results.length === 0) return;
+    const { profile, change } = recordRound(activeProfile, results);
+    setRound((current) => (current ? { ...current, difficultyChange: change } : current));
+    saveProfile(profile).catch((error) => {
+      console.error('Unable to save how the round went', error);
+      setPracticeError("Couldn't save how this round went.");
+    });
+  };
+
   const handleAnswer = (cardId: string, correct: boolean) => {
     recordAnswer(cardId, correct).catch((error) => {
       console.error('Unable to save practice result', error);
@@ -322,6 +335,8 @@ export default function App() {
         pool={roundPool}
         seed={round.seed}
         onAnswer={handleAnswer}
+        onComplete={handleRoundComplete}
+        difficultyChange={round.difficultyChange}
         onRestart={() => startPractice(roundPool)}
         onExit={goBack}
         error={practiceError}

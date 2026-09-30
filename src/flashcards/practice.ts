@@ -115,7 +115,14 @@ export const PROMPT_MODE_LABELS: Record<PromptMode, string> = {
 };
 
 export function defaultPracticeSettings(): PracticeSettings {
-  return { setIds: null, ...AGE_PRESETS[0].settings, readAloud: true, soundEffects: true, introduceNew: true };
+  return {
+    setIds: null,
+    ...AGE_PRESETS[0].settings,
+    readAloud: true,
+    soundEffects: true,
+    introduceNew: true,
+    autoAdjust: true,
+  };
 }
 
 /** Fills in settings added after a child's profile was saved. */

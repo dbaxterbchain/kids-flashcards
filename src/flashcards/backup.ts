@@ -15,7 +15,15 @@ import {
 } from './sanitize';
 import { SaveResult, shareOrDownloadJson } from './shareFile';
 import { STORAGE_KEYS } from './storageKeys';
-import { CardProgress, ChildProfile, FlashcardData, FlashcardSet, PracticeSettings, PromptMode } from './types';
+import {
+  CardProgress,
+  ChildProfile,
+  DifficultyChange,
+  FlashcardData,
+  FlashcardSet,
+  PracticeSettings,
+  PromptMode,
+} from './types';
 
 export type { SaveResult } from './shareFile';
 
@@ -79,7 +87,21 @@ function readSettings(value: unknown): PracticeSettings {
     readAloud: typeof value.readAloud === 'boolean' ? value.readAloud : defaults.readAloud,
     soundEffects: typeof value.soundEffects === 'boolean' ? value.soundEffects : defaults.soundEffects,
     introduceNew: typeof value.introduceNew === 'boolean' ? value.introduceNew : defaults.introduceNew,
+    autoAdjust: typeof value.autoAdjust === 'boolean' ? value.autoAdjust : defaults.autoAdjust,
   };
+}
+
+const readChoices = (value: unknown) => {
+  const count = readNumber(value);
+  return count !== undefined && count >= 2 && count <= 4 ? Math.round(count) : undefined;
+};
+
+function readAdjustment(value: unknown): DifficultyChange | undefined {
+  if (!isRecord(value)) return undefined;
+  const at = readNumber(value.at);
+  const from = readChoices(value.from);
+  const to = readChoices(value.to);
+  return at !== undefined && from !== undefined && to !== undefined ? { at, from, to } : undefined;
 }
 
 function readProfile(value: unknown): ChildProfile | null {
@@ -94,6 +116,10 @@ function readProfile(value: unknown): ChildProfile | null {
     avatarImage: readDataUrl(value.avatarImage, 'image'),
     createdAt: readNumber(value.createdAt) ?? Date.now(),
     settings: readSettings(value.settings),
+    recentResults: Array.isArray(value.recentResults)
+      ? value.recentResults.filter((result): result is boolean => typeof result === 'boolean').slice(-20)
+      : undefined,
+    lastAdjustment: readAdjustment(value.lastAdjustment),
   };
 }
 

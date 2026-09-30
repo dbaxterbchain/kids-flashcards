@@ -114,12 +114,18 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
     }
     void run(() =>
       onSave({
+        // Keep what isn't edited here, like how the child has been doing.
+        ...profile,
         id,
         name: trimmed,
         avatar,
         avatarImage: avatarImage ?? undefined,
         createdAt: profile?.createdAt ?? Date.now(),
         settings,
+        // A different number of choices by hand starts the automatic adjustment over.
+        ...(profile && profile.settings.choiceCount !== settings.choiceCount
+          ? { recentResults: [], lastAdjustment: undefined }
+          : {}),
       }),
     );
   };
@@ -266,6 +272,16 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={settings.autoAdjust}
+                    onChange={(event) => updateSettings({ autoAdjust: event.target.checked })}
+                  />
+                }
+                label={<Typography variant="body2">Adjust automatically</Typography>}
+              />
             </Stack>
             <Stack spacing={1}>
               <Typography variant="subtitle2">Cards per round</Typography>

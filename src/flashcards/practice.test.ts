@@ -135,6 +135,6 @@ describe('withDefaultSettings', () => {
       createdAt: 0,
       settings: { setIds: ['animals'], choiceCount: 3, promptMode: 'mix', roundSize: 10, readAloud: false, soundEffects: true },
     } as unknown as ChildProfile;
-    expect(withDefaultSettings(saved).settings).toEqual({ ...saved.settings, introduceNew: true });
+    expect(withDefaultSettings(saved).settings).toEqual({ ...saved.settings, introduceNew: true, autoAdjust: true });
   });
 });

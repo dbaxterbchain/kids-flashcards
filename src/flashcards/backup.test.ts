@@ -98,7 +98,28 @@ describe('parseBackup', () => {
   it('keeps children, fixing settings that are out of range', () => {
     const [profile] = parseBackup(JSON.stringify(backup)).profiles;
     expect(profile.avatarImage).toBeUndefined();
-    expect(profile.settings).toMatchObject({ choiceCount: 4, promptMode: 'find-picture', roundSize: 50, readAloud: false });
+    expect(profile.settings).toMatchObject({
+      choiceCount: 4,
+      promptMode: 'find-picture',
+      roundSize: 50,
+      readAloud: false,
+      introduceNew: true,
+      autoAdjust: true,
+    });
+  });
+
+  it('keeps how a child has been doing', () => {
+    const withHistory = {
+      ...backup,
+      profiles: [
+        { ...backup.profiles[0], recentResults: [true, 'yes', false], lastAdjustment: { at: 5, from: 2, to: 3 } },
+        { ...backup.profiles[0], id: 'p2', lastAdjustment: { at: 5, from: 2, to: 9 } },
+      ],
+    };
+    const [first, second] = parseBackup(JSON.stringify(withHistory)).profiles;
+    expect(first.recentResults).toEqual([true, false]);
+    expect(first.lastAdjustment).toEqual({ at: 5, from: 2, to: 3 });
+    expect(second.lastAdjustment).toBeUndefined();
   });
 
   it('drops progress for cards or children that no longer exist', () => {

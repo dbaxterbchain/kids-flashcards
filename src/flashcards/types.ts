@@ -51,6 +51,15 @@ export type PracticeSettings = {
   soundEffects: boolean;
   /** Show and say cards the child hasn't met yet before asking about them. */
   introduceNew: boolean;
+  /** Add or remove an answer choice as the child gets better or struggles. */
+  autoAdjust: boolean;
+};
+
+/** An automatic change to how many answers a child chooses from. */
+export type DifficultyChange = {
+  at: number;
+  from: number;
+  to: number;
 };
 
 export type ChildProfile = {
@@ -62,6 +71,10 @@ export type ChildProfile = {
   avatarImage?: string;
   createdAt: number;
   settings: PracticeSettings;
+  /** First-try answers since the number of choices last changed, oldest first. */
+  recentResults?: boolean[];
+  /** The last automatic change to the number of choices, to tell grown-ups about. */
+  lastAdjustment?: DifficultyChange;
 };
 
 /** One child's spaced-repetition state for one card. */

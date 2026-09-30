@@ -308,3 +308,12 @@
     animation: none;
   }
 }
+
+.practice-level-up {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: #fef3c7;
+  color: #78350f;
+  font-weight: 800;
+}
