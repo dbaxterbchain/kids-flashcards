@@ -1,6 +1,7 @@
 import { buildNumberCard, numberPalette, SVG_FONT_STACK } from './defaultData';
 import { slugifySetName } from './fileUtils';
 import { LibraryCard, LibrarySet } from './library';
+import { earthDetails } from './libraryEarth';
 import {
   ANIMAL_GROUP_EXPLANATIONS,
   BODY_EXPLANATIONS,
@@ -182,10 +183,7 @@ function planetCards(): LibraryCard[] {
       },
       {
         name: 'Earth',
-        image: planet(86, '#93c5fd', '#1d4ed8', {
-          details:
-            '<path d="M92 112c16-30 52-34 64-16 10 16-4 34-22 34-8 0-10 12-22 14-22 2-30-14-20-32z" fill="#22c55e"/><path d="M166 160c20-16 50-8 56 12 6 20-10 40-32 44-18 4-30-8-26-22 2-10-8-20 2-34z" fill="#16a34a"/><path d="M104 196c14-6 30-4 38 4" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.7"/><path d="M168 92c14-6 30-4 40 6" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.7"/>',
-        }),
+        image: planet(86, '#93c5fd', '#1d4ed8', { details: earthDetails(150, 150, 86) }),
       },
       {
         name: 'Moon',
@@ -238,8 +236,11 @@ function planetCards(): LibraryCard[] {
       },
     ],
     '#0b1026',
-  );
+  ).map((card) => (card.key === 'earth' ? { ...card, previousPictures: [OLD_EARTH] } : card));
 }
+
+// The Earth drawn before it had real continents, so cards added then can get the new one.
+const OLD_EARTH = '2855-42l1o6';
 
 // --- The human body ------------------------------------------------------------------------------
 

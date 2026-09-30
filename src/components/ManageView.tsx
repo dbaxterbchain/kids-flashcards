@@ -115,11 +115,13 @@ const hasNoSet = (card: FlashcardData) => !card.setIds || card.setIds.length ===
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
+const pictureCount = (updates: LibraryUpdate[]) => updates.reduce((total, update) => total + update.pictures, 0);
+
 /** E.g. "“How it works” explanations and new pictures for “Binary numbers” and 2 more sets". */
 function libraryUpdateSummary(updates: LibraryUpdate[]) {
   const kinds = [
     updates.some((update) => update.explanations > 0 || update.about) && '“How it works” explanations',
-    updates.some((update) => update.pictures > 0) && 'new pictures',
+    pictureCount(updates) > 0 && (pictureCount(updates) === 1 ? 'a new picture' : 'new pictures'),
     updates.some((update) => update.prompts > 0) && 'talk-about-it questions',
   ].filter((kind): kind is string => Boolean(kind));
   const what = kinds.length <= 1 ? kinds.join('') : `${kinds.slice(0, -1).join(', ')} and ${kinds[kinds.length - 1]}`;

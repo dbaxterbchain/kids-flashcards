@@ -1,3 +1,4 @@
+import { hashString } from './practice';
 import { uniqueSetName } from './setPackage';
 import { FlashcardData, FlashcardSet } from './types';
 
@@ -25,7 +26,12 @@ export type LibraryCard = Pick<
   key: string;
   /** Emoji the card showed in earlier versions of the library, replaced by a drawing that works everywhere. */
   previousFronts?: string[];
+  /** Fingerprints (see pictureFingerprint) of the library's earlier drawings for the card. */
+  previousPictures?: string[];
 };
+
+/** A short fingerprint of a picture, to recognize the library's earlier drawings without keeping them. */
+export const pictureFingerprint = (dataUrl: string) => `${dataUrl.length}-${hashString(dataUrl).toString(36)}`;
 
 export type LibrarySet = {
   id: string;
@@ -67,7 +73,7 @@ export function prepareLibrarySet(
     if (existing) {
       return { ...existing, ...newerPicture(existing, card), setIds: [...new Set([...(existing.setIds ?? []), set.id])] };
     }
-    const { key: _key, previousFronts: _previousFronts, ...content } = card;
+    const { key: _key, previousFronts: _previousFronts, previousPictures: _previousPictures, ...content } = card;
     // Counting down keeps the library's order, since sets show their newest cards first.
     return { ...content, id, setIds: [set.id], createdAt: now - index };
   });
@@ -75,12 +81,13 @@ export function prepareLibrarySet(
 }
 
 /**
- * The library's drawing for a card that still shows an emoji the library used to use (one that some
- * devices can't show). Cards a family gave their own picture keep it.
+ * The library's newer drawing for a card that still shows what the library used to: an emoji some
+ * devices can't show, or an older drawing. Cards a family gave their own picture keep it.
  */
 function newerPicture(card: FlashcardData, libraryCard: LibraryCard): Partial<FlashcardData> | null {
-  const outdated = !card.imageUrl && card.frontText && libraryCard.previousFronts?.includes(card.frontText);
-  return outdated ? { imageUrl: libraryCard.imageUrl, frontText: libraryCard.frontText } : null;
+  const oldEmoji = !card.imageUrl && card.frontText && libraryCard.previousFronts?.includes(card.frontText);
+  const oldDrawing = card.imageUrl && libraryCard.previousPictures?.includes(pictureFingerprint(card.imageUrl));
+  return oldEmoji || oldDrawing ? { imageUrl: libraryCard.imageUrl, frontText: libraryCard.frontText } : null;
 }
 
 /** What the library can add to a set a family already has, without changing anything they've written. */

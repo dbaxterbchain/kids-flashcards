@@ -9,6 +9,7 @@ Ideas for making Kids Flashcards more fun and more effective for kids from age 2
 - **Logic gates:** a set of the seven gate symbols with their truth tables, and a set of logic gate puzzles (a gate with its inputs filled in: what comes out?).
 - **Library updates:** sets added from the library earlier pick up its new explanations, talk-about-it questions and drawings in one tap, without touching a family's own edits.
 - **Voices:** grown-ups can hear and pick the voice for each language, Spanish cards prefer a Latin American voice, and the app says when a device has no voice for a language (so words would be read with the wrong accent) and how to add one.
+- **A truer Earth:** the Earth card shows the real shapes of North and South America, as seen from space, with Greenland, the Arctic ice and a few clouds.
 - **Works on older devices:** the heart and lungs are now drawings, because their emoji show as empty boxes on Windows 10; a test keeps every library emoji to ones Windows 10 can show, and the card editor warns about newer emoji.
 - **Words stay whole:** long words like "Wednesday" shrink to fit instead of splitting across lines.
 

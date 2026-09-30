@@ -5,6 +5,7 @@ import {
   libraryCardId,
   librarySetId,
   libraryUpdate,
+  pictureFingerprint,
   prepareLibrarySet,
 } from './library';
 import { GateKind, gateOutput } from './libraryLogic';
@@ -205,6 +206,22 @@ describe('libraryUpdate', () => {
     const readded = prepareLibrarySet(body, [], before);
     expect(readded.cards.find((card) => card.name === 'Heart')?.imageUrl).toBe(update.cards[0].imageUrl);
     expect(readded.cards.find((card) => card.name === 'Lungs')?.imageUrl).toBe('data:image/png;base64,AA');
+  });
+
+  it("swaps the library's older drawings for its newer ones", () => {
+    const planets = LIBRARY_SETS.find((candidate) => candidate.id === 'planets')!;
+    const earth = planets.cards.find((card) => card.name === 'Earth')!;
+    expect(earth.previousPictures?.length).toBeGreaterThan(0);
+    const oldDrawing = 'data:image/svg+xml,old%20earth';
+    const entry = { ...planets, cards: [{ ...earth, previousPictures: [pictureFingerprint(oldDrawing)] }] };
+    const added = prepareLibrarySet(entry, [], [], 1000);
+    const before = added.cards.map((card) => ({ ...card, imageUrl: oldDrawing }));
+    const update = libraryUpdate(entry, [added.set], before)!;
+    expect(update.pictures).toBe(1);
+    expect(update.cards[0].imageUrl).toBe(earth.imageUrl);
+    // A family's own photo isn't the library's older drawing, so it stays.
+    const photo = added.cards.map((card) => ({ ...card, imageUrl: 'data:image/png;base64,AA' }));
+    expect(libraryUpdate(entry, [added.set], photo)).toBeNull();
   });
 
   it('adds talk-about-it questions too', () => {
