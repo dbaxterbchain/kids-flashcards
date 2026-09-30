@@ -90,7 +90,11 @@ const readText = (value: unknown, maxLength: number) => (typeof value === 'strin
 const readNumber = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
 const readDataUrl = (value: unknown, kind: 'image' | 'audio') =>
   typeof value === 'string' && value.startsWith(`data:${kind}/`) ? value : undefined;
-const readColor = (value: unknown) => (typeof value === 'string' && /^#[0-9a-f]{3,8}$/i.test(value) ? value : undefined);
+// Hex colors, rgb()/hsl() with plain numbers, or a color name like "red" (cards made before the color
+// picker could hold any text). Nothing that could contain url() or other CSS gets through.
+const COLOR_PATTERNS = [/^#[0-9a-f]{3,8}$/i, /^(rgb|hsl)a?\([\d\s.,%/+-]{1,60}\)$/i, /^[a-z]{3,20}$/i];
+const readColor = (value: unknown) =>
+  typeof value === 'string' && COLOR_PATTERNS.some((pattern) => pattern.test(value.trim())) ? value.trim() : undefined;
 const readIds = (value: unknown) =>
   Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string' && id.length <= 100) : [];
 

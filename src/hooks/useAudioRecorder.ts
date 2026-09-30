@@ -64,7 +64,10 @@ export function useAudioRecorder(maxSeconds: number, initialAudio: string | null
           ignoreRecordingRef.current = false;
           return;
         }
-        const blob = new Blob(recordingChunksRef.current, { type: 'audio/webm' });
+        // Label the clip with the format actually recorded (iPhones and iPads record MP4, not WebM),
+        // or it may not play back, especially on another device after sharing.
+        const type = recorder.mimeType || recordingChunksRef.current[0]?.type || 'audio/webm';
+        const blob = new Blob(recordingChunksRef.current, { type });
         try {
           const dataUrl = await blobToDataUrl(blob);
           setAudioDataUrl(dataUrl);
