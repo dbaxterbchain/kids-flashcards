@@ -14,6 +14,7 @@ import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
+import { LibrarySet, prepareLibrarySet } from './flashcards/library';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
 import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
@@ -226,6 +227,12 @@ export default function App() {
 
   const handleImportSet = (pkg: SetPackage) => library.importSet(pkg);
 
+  const handleAddLibrarySet = async (entry: LibrarySet) => {
+    const { set, cards: setCards } = prepareLibrarySet(entry, sets, cards);
+    await library.addSetWithCards(set, setCards);
+    setHiddenSetIds((current) => current.filter((id) => id !== set.id));
+  };
+
   const toggleSetHidden = (setId: string) => {
     setHiddenSetIds((current) => (current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId]));
   };
@@ -335,6 +342,7 @@ export default function App() {
           onToggleSetHidden={toggleSetHidden}
           onShareSet={handleShareSet}
           onImportSet={handleImportSet}
+          onAddLibrarySet={handleAddLibrarySet}
           onAddChild={openAddChild}
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}

@@ -12,7 +12,7 @@ const introSteps: { icon: ReactNode; text: string }[] = [
   { icon: <TouchAppIcon />, text: 'Tap a set, then tap a card to flip it over and hear the word.' },
   {
     icon: <AddPhotoAlternateIcon />,
-    text: 'Grown-ups: tap the lock to add cards with your own photos (family, pets, favorite things) and your voice.',
+    text: 'Grown-ups: tap the lock to add ready-made sets from the library, or make cards with your own photos (family, pets, favorite things) and your voice.',
   },
   {
     icon: <EmojiEventsIcon />,

@@ -29,10 +29,10 @@ const numberNameInEnglish = (numberToConvert: number) => {
 const timestampSeed = Date.now();
 
 // SVGs shown through <img> can't load web fonts like Baloo 2, so stick to rounded system fonts.
-const SVG_FONT_STACK =
+export const SVG_FONT_STACK =
   "ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-const numberPalette = [
+export const numberPalette = [
   '#e2e8f0',
   '#fca5a5',
   '#fdba74',

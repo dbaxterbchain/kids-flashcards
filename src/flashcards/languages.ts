@@ -1,7 +1,9 @@
 /** Languages a card can be read aloud in, when the parent hasn't recorded it. */
 export const READ_ALOUD_LANGUAGES = [
-  { value: 'en-US', label: 'English' },
-  { value: 'es-ES', label: 'Spanish' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'es-MX', label: 'Spanish (Latin America)' },
+  { value: 'es-ES', label: 'Spanish (Spain)' },
   { value: 'fr-FR', label: 'French' },
   { value: 'de-DE', label: 'German' },
   { value: 'it-IT', label: 'Italian' },

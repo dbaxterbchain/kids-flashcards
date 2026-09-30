@@ -3,6 +3,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import IosShareIcon from '@mui/icons-material/IosShare';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -36,6 +37,7 @@ import {
 } from '@mui/material';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Backup, BackupError, SaveResult } from '../flashcards/backup';
+import { LibrarySet } from '../flashcards/library';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { parseSetPackage, SetPackage } from '../flashcards/setPackage';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
@@ -45,6 +47,7 @@ import { ChildAvatar } from './ChildAvatar';
 import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
 import { SetImportDialog } from './SetImportDialog';
+import { SetLibraryDialog } from './SetLibraryDialog';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
 
@@ -68,6 +71,7 @@ type ManageViewProps = {
   onShareSet: (set: FlashcardSet) => Promise<SaveResult>;
   /** Adds a shared set as a new set. */
   onImportSet: (pkg: SetPackage) => Promise<FlashcardSet>;
+  onAddLibrarySet: (entry: LibrarySet) => Promise<void>;
   onAddChild: () => void;
   onEditChild: (profile: ChildProfile) => void;
   onSpeakOnFlipChange: (value: boolean) => void;
@@ -276,7 +280,9 @@ function SetsTab({
   onToggleSetHidden,
   onShareSet,
   onImportSet,
+  onAddLibrarySet,
 }: ManageViewProps) {
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<FlashcardSet | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -368,6 +374,9 @@ function SetsTab({
   return (
     <Stack spacing={2}>
       <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Button variant="contained" startIcon={<LibraryBooksIcon />} onClick={() => setLibraryOpen(true)}>
+          Set library
+        </Button>
         <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
           Import a set
           <input hidden type="file" accept="application/json,.json" onChange={handleImportFile} />
@@ -490,6 +499,7 @@ function SetsTab({
 
       <DeleteSetDialog set={deleting} cards={cards} onClose={() => setDeleting(null)} onDelete={handleDelete} />
       <SetImportDialog pkg={importing} sets={sets} onClose={() => setImporting(null)} onImport={handleImport} />
+      <SetLibraryDialog open={libraryOpen} sets={sets} onClose={() => setLibraryOpen(false)} onAdd={onAddLibrarySet} />
 
       <Snackbar
         open={Boolean(message)}
