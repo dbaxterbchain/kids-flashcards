@@ -82,6 +82,14 @@
   font-weight: 800;
 }
 
+.practice-prompt {
+  flex-basis: 100%;
+  order: 1;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .practice-status__text--correct {
   color: #2e7d32;
 }

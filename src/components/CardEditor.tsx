@@ -142,6 +142,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
   const [backgroundColor, setBackgroundColor] = useState(card?.backgroundColor ?? '');
   // '' reads the word in the device's own language.
   const [lang, setLang] = useState(card?.lang ?? '');
+  const [prompt, setPrompt] = useState(card?.prompt ?? '');
   // True while the background was picked automatically from the picture, so a new picture can replace it.
   const [backgroundIsAuto, setBackgroundIsAuto] = useState(false);
   const [setIds, setSetIds] = useState<string[]>(card?.setIds ?? initialSetIds ?? []);
@@ -268,6 +269,7 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
         backgroundColor: backgroundColor || undefined,
         audioUrl: audioDataUrl ?? undefined,
         lang: lang || undefined,
+        prompt: prompt.trim() || undefined,
         setIds,
         createdAt: card?.createdAt ?? Date.now(),
         // Kept until it's moved to the first child's progress.
@@ -395,6 +397,18 @@ export function CardEditor({ open, card, sets, initialSetIds, onClose, onSave, o
               required
               fullWidth
               slotProps={{ htmlInput: { maxLength: 40 } }}
+            />
+
+            <TextField
+              label="Talk about it (optional)"
+              placeholder={frontType === 'text' ? 'e.g. Can you count to 5 on your fingers?' : 'e.g. What sound does a dog make?'}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              helperText="A question to ask together, shown on the back of the card. Talking about a card helps kids learn it."
+              fullWidth
+              multiline
+              maxRows={3}
+              slotProps={{ htmlInput: { maxLength: 120 } }}
             />
 
             <Stack spacing={1}>

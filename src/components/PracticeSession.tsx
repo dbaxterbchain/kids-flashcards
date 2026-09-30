@@ -308,6 +308,7 @@ export function PracticeSession({
             {solved ? (
               <>
                 <span className="practice-status__text practice-status__text--correct">Yes! That&apos;s {card.name}!</span>
+                {card.prompt && <span className="practice-prompt">💬 {card.prompt}</span>}
                 <Button
                   ref={nextButtonRef}
                   variant="contained"

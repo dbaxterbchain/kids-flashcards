@@ -39,6 +39,7 @@ describe('sanitizing values from files', () => {
       audioUrl: WAV,
       backgroundColor: 'url(x)',
       lang: 'es-MX',
+      prompt: '  Where does Grandma live?  ',
       extra: 'ignored',
       createdAt: 5,
     });
@@ -50,6 +51,7 @@ describe('sanitizing values from files', () => {
       createdAt: 5,
       audioUrl: WAV,
       lang: 'es-MX',
+      prompt: 'Where does Grandma live?',
       setIds: [],
       backgroundColor: undefined,
       review: undefined,

@@ -9,6 +9,8 @@ export type FlashcardData = {
   audioUrl?: string;
   /** Language to read the word aloud in (e.g. "es-ES"); the device's language when not set. */
   lang?: string;
+  /** A question to talk about together, shown on the back, e.g. "What sound does a dog make?" */
+  prompt?: string;
   setIds?: string[];
   backgroundColor?: string;
   /** Progress saved before practice was tracked per child; copied to the first child a parent adds. */

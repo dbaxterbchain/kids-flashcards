@@ -16,7 +16,7 @@ export const LIBRARY_SUBJECTS = [
 export type LibrarySubject = (typeof LIBRARY_SUBJECTS)[number]['id'];
 
 /** A card as the library describes it. It becomes a regular card when a grown-up adds the set. */
-export type LibraryCard = Pick<FlashcardData, 'name' | 'imageUrl' | 'frontText' | 'backgroundColor' | 'lang'> & {
+export type LibraryCard = Pick<FlashcardData, 'name' | 'imageUrl' | 'frontText' | 'backgroundColor' | 'lang' | 'prompt'> & {
   /** Unique within its set and part of the card's id, so adding a set again doesn't make copies. */
   key: string;
 };

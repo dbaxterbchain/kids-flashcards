@@ -35,6 +35,7 @@ describe('the set library', () => {
       if (card.frontText) expect(card.frontText.length, label).toBeLessThanOrEqual(60);
       if (card.backgroundColor) expect(readColor(card.backgroundColor), label).toBe(card.backgroundColor);
       if (card.lang) expect(readLang(card.lang), label).toBe(card.lang);
+      if (card.prompt) expect(card.prompt.length, label).toBeLessThanOrEqual(120);
       expect(card.lang, label).toBe(entry.lang);
     }
   });
@@ -46,6 +47,13 @@ describe('the set library', () => {
         expect(/\p{Emoji_Presentation}|️/u.test(text), `${entry.name}: ${card.name}`).toBe(true);
       }
     }
+  });
+
+  it('has talk-about-it questions for everyday sets', () => {
+    const withPrompts = LIBRARY_SETS.filter((entry) => entry.cards.every((card) => card.prompt));
+    expect(withPrompts.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['farm-animals', 'feelings', 'body-parts', 'weather', 'opposites']),
+    );
   });
 
   it("doesn't repeat a front within a set, so every question has one right picture", () => {

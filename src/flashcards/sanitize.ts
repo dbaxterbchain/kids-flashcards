@@ -64,6 +64,7 @@ export function readCard(value: unknown): FlashcardData | null {
     createdAt: readNumber(value.createdAt) ?? Date.now(),
     audioUrl: readDataUrl(value.audioUrl, 'audio'),
     lang: readLang(value.lang),
+    prompt: readText(value.prompt, 200)?.trim() || undefined,
     setIds: readIds(value.setIds),
     backgroundColor: readColor(value.backgroundColor),
     review: readReview(value.review),

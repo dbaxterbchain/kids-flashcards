@@ -57,6 +57,32 @@
   overflow-wrap: anywhere;
 }
 
+.flashcard-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6em;
+  max-width: 100%;
+}
+
+/* With a talk-about-it question, the words sit above the speaker button instead of behind it. */
+.flashcard-back.flashcard-back--prompt {
+  padding-bottom: 3.25rem;
+}
+
+.flashcard-prompt {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  font-size: clamp(0.8rem, 6cqi, 1.1rem);
+  font-weight: 600;
+  line-height: 1.3;
+  opacity: 0.85;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
 /* Scoped under .flashcard-back so it wins over IconButton's own position: relative. */
 .flashcard-back .flashcard-speak {
   position: absolute;
