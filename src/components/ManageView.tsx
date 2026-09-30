@@ -2,6 +2,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import InsightsIcon from '@mui/icons-material/Insights';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -22,7 +23,6 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -44,6 +44,7 @@ import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from 
 import { RemoveSetOptions } from '../hooks/useCardLibrary';
 import { BackupSection } from './BackupSection';
 import { ChildAvatar } from './ChildAvatar';
+import { ChildProgressDialog } from './ChildProgressDialog';
 import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
 import { SetImportDialog } from './SetImportDialog';
@@ -517,7 +518,16 @@ function SetsTab({
   );
 }
 
-function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProps) {
+function ChildrenTab({ cards, profiles, sets, hiddenSetIds, onAddChild, onEditChild }: ManageViewProps) {
+  const [showingProgress, setShowingProgress] = useState<ChildProfile | null>(null);
+  const allSets = [...sets, ...(cards.some(hasNoSet) ? [{ id: UNCATEGORIZED_SET_ID, name: 'No set' }] : [])];
+  // "All sets" means the sets kids can see, as in practice.
+  const practicedSets = (profile: ChildProfile) => {
+    const chosen = profile.settings.setIds;
+    return chosen === null
+      ? allSets.filter((set) => !hiddenSetIds.includes(set.id))
+      : allSets.filter((set) => chosen.includes(set.id));
+  };
   const setSummary = (setIds: string[] | null) => {
     if (setIds === null) return 'All sets';
     const names = sets.filter((set) => setIds.includes(set.id)).map((set) => set.name);
@@ -541,22 +551,49 @@ function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProp
       ) : (
         <List disablePadding sx={listSx}>
           {profiles.map((profile, index) => (
-            <ListItemButton key={profile.id} divider={index < profiles.length - 1} onClick={() => onEditChild(profile)}>
+            <ListItem key={profile.id} divider={index < profiles.length - 1} alignItems="flex-start">
               <ListItemAvatar>
                 <ChildAvatar profile={profile} size={40} />
               </ListItemAvatar>
-              <ListItemText
-                primary={profile.name}
-                secondary={`${PROMPT_MODE_LABELS[profile.settings.promptMode]} · ${profile.settings.choiceCount} choices · ${plural(
-                  profile.settings.roundSize,
-                  'card',
-                )} a round · ${setSummary(profile.settings.setIds)}`}
-              />
-              <EditIcon color="action" sx={{ ml: 1 }} />
-            </ListItemButton>
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <ListItemText
+                  sx={{ mt: 0.5 }}
+                  primary={profile.name}
+                  secondary={`${PROMPT_MODE_LABELS[profile.settings.promptMode]} · ${profile.settings.choiceCount} choices · ${plural(
+                    profile.settings.roundSize,
+                    'card',
+                  )} a round · ${setSummary(profile.settings.setIds)}`}
+                />
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<InsightsIcon />}
+                    onClick={() => setShowingProgress(profile)}
+                    aria-label={`${profile.name}'s progress`}
+                  >
+                    Progress
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon />}
+                    onClick={() => onEditChild(profile)}
+                    aria-label={`${profile.name}'s settings`}
+                  >
+                    Settings
+                  </Button>
+                </Stack>
+              </Box>
+            </ListItem>
           ))}
         </List>
       )}
+      <ChildProgressDialog
+        profile={showingProgress}
+        cards={cards}
+        sets={showingProgress ? practicedSets(showingProgress) : []}
+        onClose={() => setShowingProgress(null)}
+      />
     </Stack>
   );
 }

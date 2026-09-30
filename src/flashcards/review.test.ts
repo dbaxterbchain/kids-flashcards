@@ -11,21 +11,22 @@ describe('applyReviewResult', () => {
     expect(first.intervalDays).toBe(1);
     expect(first.nextReviewAt).toBe(NOW + DAY);
 
-    const second = applyReviewResult(first, true, NOW);
+    const second = applyReviewResult(first, true, first.nextReviewAt);
     expect(second.intervalDays).toBe(3);
 
-    const third = applyReviewResult(second, true, NOW);
+    const third = applyReviewResult(second, true, second.nextReviewAt);
     expect(third.intervalDays).toBe(Math.round(3 * second.easeFactor));
     expect(third.reviewCount).toBe(3);
     expect(third.lastCorrect).toBe(true);
   });
 
   it('brings a missed card back in a few minutes and starts it over', () => {
-    const learned = applyReviewResult(applyReviewResult(undefined, true, NOW), true, NOW);
-    const missed = applyReviewResult(learned, false, NOW);
+    const first = applyReviewResult(undefined, true, NOW);
+    const learned = applyReviewResult(first, true, first.nextReviewAt);
+    const missed = applyReviewResult(learned, false, learned.nextReviewAt);
     expect(missed.reviewCount).toBe(0);
     expect(missed.intervalDays).toBe(0);
-    expect(missed.nextReviewAt).toBe(NOW + 10 * 60 * 1000);
+    expect(missed.nextReviewAt).toBe(learned.nextReviewAt + 10 * 60 * 1000);
     expect(missed.easeFactor).toBeLessThan(learned.easeFactor);
     expect(missed.lastCorrect).toBe(false);
   });
@@ -34,6 +35,33 @@ describe('applyReviewResult', () => {
     let review = createInitialReview(NOW);
     for (let miss = 0; miss < 20; miss += 1) review = applyReviewResult(review, false, NOW);
     expect(review.easeFactor).toBeCloseTo(1.3);
+  });
+});
+
+describe('extra practice', () => {
+  it("doesn't stretch the gap when a card is answered right before it's due", () => {
+    const learned = applyReviewResult(undefined, true, NOW); // due tomorrow
+    const early = applyReviewResult(learned, true, NOW + 60 * 1000);
+    expect(early.intervalDays).toBe(learned.intervalDays);
+    expect(early.reviewCount).toBe(learned.reviewCount);
+    expect(early.nextReviewAt).toBe(learned.nextReviewAt);
+    expect(early.lastReviewedAt).toBe(NOW + 60 * 1000);
+
+    const onTime = applyReviewResult(early, true, learned.nextReviewAt);
+    expect(onTime.intervalDays).toBe(3);
+  });
+
+  it('still counts a miss before the card is due', () => {
+    const learned = applyReviewResult(undefined, true, NOW);
+    const missed = applyReviewResult(learned, false, NOW + 60 * 1000);
+    expect(missed.intervalDays).toBe(0);
+    expect(missed.lastCorrect).toBe(false);
+  });
+
+  it('remembers the last five answers', () => {
+    let review = applyReviewResult(undefined, false, NOW);
+    for (const correct of [true, false, true, true, true]) review = applyReviewResult(review, correct, review.nextReviewAt);
+    expect(review.recent).toEqual([true, false, true, true, true]);
   });
 });
 
@@ -54,9 +82,10 @@ describe('buildPracticeQueue', () => {
 
   it('says when the next card is due when nothing is due yet', () => {
     const cards = [testCard('a'), testCard('b')];
+    const bFirst = applyReviewResult(undefined, true, NOW - DAY);
     const progress = {
       a: applyReviewResult(undefined, true, NOW), // tomorrow
-      b: applyReviewResult(applyReviewResult(undefined, true, NOW), true, NOW), // in 3 days
+      b: applyReviewResult(bFirst, true, bFirst.nextReviewAt), // in 3 days
     };
     const plan = buildPracticeQueue(cards, progress, NOW);
     expect(plan.hasDue).toBe(false);

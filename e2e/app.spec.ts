@@ -97,6 +97,13 @@ test('a child can practice', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText(`Yes! That's ${word}!`);
   await page.getByRole('button', { name: 'Stop practicing' }).click();
   await expect(page.getByRole('heading', { name: 'What shall we learn?' })).toBeVisible();
+
+  // Grown-ups can see the answer in Ivy's progress.
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Children' }).click();
+  await page.getByRole('button', { name: "Ivy's progress" }).click();
+  await expect(page.getByText(/Last practiced today\. Met 1 of 31 cards/)).toBeVisible();
+  await expect(page.locator('.progress-tile', { hasText: 'Learning' })).toContainText('1');
 });
 
 test('a shared set file can be imported', async ({ page }, testInfo) => {

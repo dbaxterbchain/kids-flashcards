@@ -31,6 +31,8 @@ export type FlashcardReview = {
   reviewCount: number;
   lastCorrect?: boolean;
   lastScore?: number;
+  /** The last few first-try results for this card, oldest first. */
+  recent?: boolean[];
 };
 
 /**

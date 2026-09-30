@@ -17,11 +17,22 @@ export function createInitialReview(now: number = Date.now()): FlashcardReview {
   };
 }
 
+/** How many recent answers are kept per card. */
+export const RECENT_RESULTS = 5;
+
 export function applyReviewResult(
   review: FlashcardReview | undefined,
   correct: boolean,
   now: number = Date.now(),
 ): FlashcardReview {
+  const recent = [...(review?.recent ?? []), correct].slice(-RECENT_RESULTS);
+
+  // Getting a card right before it's due (extra practice) is great, but it isn't spaced practice,
+  // so it doesn't stretch the time until the next review. A miss always counts.
+  if (correct && review && now < review.nextReviewAt) {
+    return { ...review, lastReviewedAt: now, lastCorrect: true, recent };
+  }
+
   let { intervalDays, easeFactor, reviewCount } = review ?? createInitialReview(now);
 
   if (!correct) {
@@ -53,6 +64,7 @@ export function applyReviewResult(
     easeFactor,
     reviewCount,
     lastCorrect: correct,
+    recent,
   };
 }
 

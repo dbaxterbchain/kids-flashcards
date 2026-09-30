@@ -45,6 +45,9 @@ export function readReview(value: unknown): FlashcardReview | undefined {
     easeFactor,
     reviewCount,
     lastCorrect: typeof value.lastCorrect === 'boolean' ? value.lastCorrect : undefined,
+    recent: Array.isArray(value.recent)
+      ? value.recent.filter((result): result is boolean => typeof result === 'boolean').slice(-10)
+      : undefined,
   };
 }
 
