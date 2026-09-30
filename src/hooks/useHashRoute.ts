@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
+import { GAME_KINDS, GameKind } from '../flashcards/games';
 
 export type Route =
   | { name: 'home' }
   | { name: 'set'; setId: string }
   | { name: 'practice' }
   | { name: 'stickers' }
+  | { name: 'game'; game: GameKind; setId: string }
   | { name: 'manage' };
 
 type HistoryState = { depth?: number } | null;
 
 function parseHash(hash: string): Route {
-  const [section, id] = hash.replace(/^#\/?/, '').split('/');
+  const [section, id, extra] = hash.replace(/^#\/?/, '').split('/');
   if (section === 'set' && id) return { name: 'set', setId: decodeURIComponent(id) };
+  if (section === 'game' && GAME_KINDS.includes(id as GameKind) && extra) {
+    return { name: 'game', game: id as GameKind, setId: decodeURIComponent(extra) };
+  }
   if (section === 'practice') return { name: 'practice' };
   if (section === 'stickers') return { name: 'stickers' };
   if (section === 'manage') return { name: 'manage' };
@@ -20,6 +25,7 @@ function parseHash(hash: string): Route {
 
 function routeToHash(route: Route) {
   if (route.name === 'set') return `#/set/${encodeURIComponent(route.setId)}`;
+  if (route.name === 'game') return `#/game/${route.game}/${encodeURIComponent(route.setId)}`;
   if (route.name === 'home') return '#/';
   return `#/${route.name}`;
 }

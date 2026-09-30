@@ -12,7 +12,12 @@ import { PracticePanel } from './components/PracticePanel';
 import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
+import { GameReward } from './components/GameParts';
+import { ListenGame } from './components/ListenGame';
+import { MemoryGame } from './components/MemoryGame';
+import { OddOneOutGame } from './components/OddOneOutGame';
 import { StickerBook } from './components/StickerBook';
+import { buildOddOneOut, distinctCards, GameKind, oddOneOutBelonging } from './flashcards/games';
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { recordRound } from './flashcards/difficulty';
@@ -100,6 +105,9 @@ export default function App() {
   const [round, setRound] = useState<PracticeRound | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [childDialog, setChildDialog] = useState<ChildDialogState>({ open: false, key: 0, profile: null });
+  // Each game played gets a fresh key, so "Play again" deals a new one.
+  const [gameKey, setGameKey] = useState(0);
+  const [gameReward, setGameReward] = useState<GameReward | null>(null);
 
   const { canInstall, promptInstall, updateAvailable, reloadForUpdate, offlineReady, dismissOfflineReady, isOffline } =
     usePwa();
@@ -150,7 +158,7 @@ export default function App() {
     const cover = [...firstOfEach, ...playCards.filter((card) => !firstOfEach.includes(card))].slice(0, 4);
     return [{ id: ALL_CARDS_ID, name: 'All cards', cards: playCards, cover }, ...tiles];
   }, [availableSets, playableSetIds, sortedCards, playCards]);
-  const openSetId = route.name === 'set' ? route.setId : null;
+  const openSetId = route.name === 'set' || route.name === 'game' ? route.setId : null;
   const openTile = useMemo<SetTile | null>(() => {
     if (openSetId === null) return null;
     const tile = setTiles.find((candidate) => candidate.id === openSetId);
@@ -158,6 +166,25 @@ export default function App() {
     // With a single set there's no "All cards" tile, but its link should still work.
     return openSetId === ALL_CARDS_ID && playCards.length > 0 ? { id: ALL_CARDS_ID, name: 'All cards', cards: playCards } : null;
   }, [openSetId, setTiles, playCards]);
+
+  // Cards from the other sets kids can see, where odd one out finds its odd ones.
+  const otherPlayCards = useMemo(
+    () => (openTile ? playCards.filter((card) => !openTile.cards.includes(card)) : []),
+    [openTile, playCards],
+  );
+  const availableGames = useMemo<GameKind[]>(() => {
+    if (!openTile || distinctCards(openTile.cards).length < 2) return [];
+    const games: GameKind[] = ['memory', 'listen'];
+    const isRealSet = openTile.id !== ALL_CARDS_ID && openTile.id !== UNCATEGORIZED_SET_ID;
+    const settings = activeProfile?.settings ?? null;
+    if (
+      isRealSet &&
+      buildOddOneOut(openTile.cards, otherPlayCards, { questions: 1, belonging: oddOneOutBelonging(settings), seed: 1 }).length > 0
+    ) {
+      games.push('odd-one-out');
+    }
+    return games;
+  }, [openTile, otherPlayCards, activeProfile]);
 
   const practicePool = useMemo(
     () => (activeProfile ? filterCardsForSets(cards, activeProfile.settings.setIds ?? playableSetIds) : []),
@@ -199,7 +226,7 @@ export default function App() {
     if (loading || profilesLoading) return;
     if (
       (route.name === 'practice' && !round) ||
-      (route.name === 'set' && !openTile) ||
+      ((route.name === 'set' || route.name === 'game') && !openTile) ||
       (route.name === 'stickers' && !activeProfile)
     ) {
       navigate({ name: 'home' }, { replace: true });
@@ -314,6 +341,25 @@ export default function App() {
     });
   };
 
+  const startGame = (game: GameKind) => {
+    if (!openTile) return;
+    // Starting a game is a tap, which is when browsers allow sound to be switched on.
+    unlockAudio();
+    setGameReward(null);
+    setGameKey((key) => key + 1);
+    if (route.name === 'game') return;
+    navigate({ name: 'game', game, setId: openTile.id });
+  };
+
+  const handleGameFinish = ({ perfect }: { perfect: boolean }) => {
+    if (!activeProfile) return;
+    const { profile, sticker } = awardSticker(recordPracticeDay(activeProfile), { perfect });
+    setGameReward({ sticker, streak: practiceStreak(profile.practiceDays) });
+    saveProfile(profile).catch((error) => {
+      console.error('Unable to save the sticker', error);
+    });
+  };
+
   const handleAnswer = (cardId: string, correct: boolean) => {
     recordAnswer(cardId, correct).catch((error) => {
       console.error('Unable to save practice result', error);
@@ -364,6 +410,23 @@ export default function App() {
         error={practiceError}
       />
     );
+  } else if (route.name === 'game' && openTile) {
+    const gameProps = {
+      title: openTile.name,
+      profile: activeProfile,
+      reward: gameReward,
+      onFinish: handleGameFinish,
+      onPlayAgain: () => startGame(route.game),
+      onExit: goBack,
+    };
+    screen =
+      route.game === 'memory' ? (
+        <MemoryGame key={gameKey} cards={openTile.cards} {...gameProps} />
+      ) : route.game === 'listen' ? (
+        <ListenGame key={gameKey} cards={openTile.cards} {...gameProps} />
+      ) : (
+        <OddOneOutGame key={gameKey} setCards={openTile.cards} otherCards={otherPlayCards} {...gameProps} />
+      );
   } else if (route.name === 'stickers' && activeProfile) {
     screen = <StickerBook profile={activeProfile} streak={practiceStreak(activeProfile.practiceDays)} onBack={goBack} />;
   } else if (route.name === 'manage' && parentUnlocked) {
@@ -408,6 +471,8 @@ export default function App() {
         practiceProfile={progressReady ? activeProfile : null}
         onBack={goBack}
         onPractice={() => startPractice(openTile.cards)}
+        games={availableGames}
+        onPlayGame={startGame}
       />
     );
   } else {

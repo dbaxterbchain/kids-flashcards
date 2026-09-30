@@ -27,6 +27,24 @@ test('kids can open a set and flip a card', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'What shall we learn?' })).toBeVisible();
 });
 
+test('kids can play odd one out with a set', async ({ page }) => {
+  const shapes = ['Circle', 'Square', 'Triangle', 'Rectangle', 'Star', 'Heart', 'Oval', 'Diamond', 'Pentagon', 'Hexagon'];
+  await setTile(page, 'Shapes').click();
+  await page.getByRole('button', { name: /Odd one out/ }).click();
+  await expect(page.getByText("Which one doesn't belong?")).toBeVisible();
+  for (let question = 1; question <= 6; question += 1) {
+    await expect(page.getByText(`Question ${question} of 6`)).toBeVisible();
+    const labels = await page.locator('.practice-options .practice-tile').evaluateAll((tiles) =>
+      tiles.map((tile) => tile.getAttribute('aria-label') ?? ''),
+    );
+    const odd = labels.find((label) => !shapes.includes(label)) ?? '';
+    await page.locator('.practice-options').getByRole('button', { name: odd, exact: true }).click();
+    await expect(page.getByText(`Yes! ${odd} doesn't belong with Shapes.`)).toBeVisible();
+    await page.getByRole('button', { name: /^(Next|Finish)$/ }).click();
+  }
+  await expect(page.getByText('⭐ 6 of 6 right on the first try')).toBeVisible();
+});
+
 test('the grown-ups question keeps kids out', async ({ page }) => {
   await page.getByRole('button', { name: 'Grown-ups' }).click();
   const gate = page.getByRole('dialog');
