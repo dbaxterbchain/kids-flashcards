@@ -8,11 +8,12 @@ import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@m
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildOptions, hashString, promptSideFor } from '../flashcards/practice';
-import { ChildProfile, DifficultyChange, FlashcardData } from '../flashcards/types';
+import { ChildProfile, DifficultyChange, FlashcardData, Sticker } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
 import { Flashcard } from './Flashcard';
+import { StickerBadge } from './StickerBook';
 import './PracticeSession.css';
 
 type PracticeSessionProps = {
@@ -27,9 +28,12 @@ type PracticeSessionProps = {
   /** Called once per card with whether the first try was right. */
   onAnswer: (cardId: string, correct: boolean) => void;
   /** Called when the round ends, with the first-try results for cards that weren't new. */
-  onComplete?: (results: boolean[]) => void;
+  onComplete?: (round: { results: boolean[]; perfect: boolean }) => void;
   /** An automatic change to the number of choices made when this round ended. */
   difficultyChange?: DifficultyChange | null;
+  /** The sticker earned for this round, and the days-in-a-row count including today. */
+  reward?: { sticker: Sticker; streak: number } | null;
+  onOpenStickers?: () => void;
   onRestart: () => void;
   onExit: () => void;
   error?: string | null;
@@ -52,6 +56,8 @@ export function PracticeSession({
   onAnswer,
   onComplete,
   difficultyChange,
+  reward,
+  onOpenStickers,
   onRestart,
   onExit,
   error,
@@ -120,11 +126,12 @@ export function PracticeSession({
     if (index + 1 >= cards.length) {
       setComplete(true);
       if (settings.soundEffects) playSound('finish');
-      onComplete?.(
-        cards
+      onComplete?.({
+        results: cards
           .filter((roundCard) => results[roundCard.id] !== undefined && !newCards.some((newCard) => newCard.id === roundCard.id))
           .map((roundCard) => results[roundCard.id]),
-      );
+        perfect: cards.every((roundCard) => results[roundCard.id]),
+      });
       return;
     }
     setIndex(index + 1);
@@ -165,9 +172,24 @@ export function PracticeSession({
           <Typography variant="h4" component="h2">
             {summaryHeadline(correctCount, cards.length)}, {profile.name}!
           </Typography>
+          {reward && (
+            <Stack spacing={1} alignItems="center">
+              <span className="sticker-reward">
+                <StickerBadge sticker={reward.sticker} size={96} />
+              </span>
+              <Typography sx={{ fontWeight: 800 }}>
+                {reward.sticker.shiny ? 'A shiny sticker for a perfect round!' : 'You earned a sticker!'}
+              </Typography>
+            </Stack>
+          )}
           <Typography variant="h6" component="p" color="text.secondary">
             ⭐ {correctCount} of {cards.length} right on the first try
           </Typography>
+          {reward && reward.streak >= 2 && (
+            <Typography variant="h6" component="p" sx={{ fontWeight: 800 }}>
+              🌟 {reward.streak} days in a row!
+            </Typography>
+          )}
           {difficultyChange && difficultyChange.to > difficultyChange.from && (
             <Typography className="practice-level-up" component="p">
               🌟 You&apos;re getting so good! Next time, pick from {difficultyChange.to}{' '}
@@ -202,6 +224,11 @@ export function PracticeSession({
             <Button variant="contained" size="large" startIcon={<ReplayIcon />} onClick={onRestart}>
               Play again
             </Button>
+            {onOpenStickers && (
+              <Button variant="outlined" size="large" onClick={onOpenStickers}>
+                My stickers
+              </Button>
+            )}
             <Button variant="outlined" size="large" onClick={exit}>
               Done
             </Button>

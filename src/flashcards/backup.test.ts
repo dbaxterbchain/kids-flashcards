@@ -114,13 +114,24 @@ describe('parseBackup', () => {
     const withHistory = {
       ...backup,
       profiles: [
-        { ...backup.profiles[0], recentResults: [true, 'yes', false], lastAdjustment: { at: 5, from: 2, to: 3 } },
+        {
+          ...backup.profiles[0],
+          recentResults: [true, 'yes', false],
+          lastAdjustment: { at: 5, from: 2, to: 3 },
+          stickers: [{ emoji: '🦊', at: 1 }, { emoji: '🌈', at: 2, shiny: true }, { emoji: 7 }],
+          practiceDays: ['2026-03-01', 'yesterday', '2026-03-02'],
+        },
         { ...backup.profiles[0], id: 'p2', lastAdjustment: { at: 5, from: 2, to: 9 } },
       ],
     };
     const [first, second] = parseBackup(JSON.stringify(withHistory)).profiles;
     expect(first.recentResults).toEqual([true, false]);
     expect(first.lastAdjustment).toEqual({ at: 5, from: 2, to: 3 });
+    expect(first.stickers).toEqual([
+      { emoji: '🦊', at: 1 },
+      { emoji: '🌈', at: 2, shiny: true },
+    ]);
+    expect(first.practiceDays).toEqual(['2026-03-01', '2026-03-02']);
     expect(second.lastAdjustment).toBeUndefined();
   });
 

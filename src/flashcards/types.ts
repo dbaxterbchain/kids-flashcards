@@ -77,6 +77,17 @@ export type ChildProfile = {
   recentResults?: boolean[];
   /** The last automatic change to the number of choices, to tell grown-ups about. */
   lastAdjustment?: DifficultyChange;
+  /** Stickers earned by finishing rounds, oldest first. */
+  stickers?: Sticker[];
+  /** Days (YYYY-MM-DD, the device's time zone) with at least one finished round, oldest first. */
+  practiceDays?: string[];
+};
+
+export type Sticker = {
+  emoji: string;
+  at: number;
+  /** Earned with a perfect round. */
+  shiny?: boolean;
 };
 
 /** One child's spaced-repetition state for one card. */

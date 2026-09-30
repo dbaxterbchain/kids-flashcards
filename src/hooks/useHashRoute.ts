@@ -4,6 +4,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'set'; setId: string }
   | { name: 'practice' }
+  | { name: 'stickers' }
   | { name: 'manage' };
 
 type HistoryState = { depth?: number } | null;
@@ -12,6 +13,7 @@ function parseHash(hash: string): Route {
   const [section, id] = hash.replace(/^#\/?/, '').split('/');
   if (section === 'set' && id) return { name: 'set', setId: decodeURIComponent(id) };
   if (section === 'practice') return { name: 'practice' };
+  if (section === 'stickers') return { name: 'stickers' };
   if (section === 'manage') return { name: 'manage' };
   return { name: 'home' };
 }

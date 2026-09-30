@@ -12,6 +12,7 @@ import { PracticePanel } from './components/PracticePanel';
 import { PracticeSession } from './components/PracticeSession';
 import { PwaPromptBanner } from './components/PwaPromptBanner';
 import { SetTile, SetTiles } from './components/SetTiles';
+import { StickerBook } from './components/StickerBook';
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { recordRound } from './flashcards/difficulty';
@@ -20,7 +21,15 @@ import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flas
 import { buildPracticeQueue } from './flashcards/review';
 import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
 import { STORAGE_KEYS } from './flashcards/storageKeys';
-import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
+import { awardSticker, practiceStreak, recordPracticeDay } from './flashcards/stickers';
+import {
+  ChildProfile,
+  DifficultyChange,
+  FlashcardData,
+  FlashcardSet,
+  Sticker,
+  UNCATEGORIZED_SET_ID,
+} from './flashcards/types';
 import { RemoveSetOptions, useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useHashRoute } from './hooks/useHashRoute';
@@ -53,6 +62,8 @@ type PracticeRound = {
   seed: number;
   /** A change to the number of choices made when the round ended. */
   difficultyChange?: DifficultyChange | null;
+  /** The sticker earned for finishing, and the days-in-a-row count. */
+  reward?: { sticker: Sticker; streak: number } | null;
 };
 
 type ChildDialogState = {
@@ -185,11 +196,15 @@ export default function App() {
 
   // A practice or set screen with nothing to show (e.g. opened by reloading the page) goes home.
   useEffect(() => {
-    if (loading) return;
-    if ((route.name === 'practice' && !round) || (route.name === 'set' && !openTile)) {
+    if (loading || profilesLoading) return;
+    if (
+      (route.name === 'practice' && !round) ||
+      (route.name === 'set' && !openTile) ||
+      (route.name === 'stickers' && !activeProfile)
+    ) {
       navigate({ name: 'home' }, { replace: true });
     }
-  }, [loading, route.name, round, openTile, navigate]);
+  }, [loading, profilesLoading, route.name, round, openTile, activeProfile, navigate]);
 
   const openGrownUps = () => navigate({ name: 'manage' });
 
@@ -284,10 +299,15 @@ export default function App() {
     if (route.name !== 'practice') navigate({ name: 'practice' });
   };
 
-  const handleRoundComplete = (results: boolean[]) => {
-    if (!activeProfile || results.length === 0) return;
-    const { profile, change } = recordRound(activeProfile, results);
-    setRound((current) => (current ? { ...current, difficultyChange: change } : current));
+  const handleRoundComplete = ({ results, perfect }: { results: boolean[]; perfect: boolean }) => {
+    if (!activeProfile) return;
+    const adjusted = results.length > 0 ? recordRound(activeProfile, results) : { profile: activeProfile, change: null };
+    const { profile, sticker } = awardSticker(recordPracticeDay(adjusted.profile), { perfect });
+    setRound((current) =>
+      current
+        ? { ...current, difficultyChange: adjusted.change, reward: { sticker, streak: practiceStreak(profile.practiceDays) } }
+        : current,
+    );
     saveProfile(profile).catch((error) => {
       console.error('Unable to save how the round went', error);
       setPracticeError("Couldn't save how this round went.");
@@ -337,11 +357,15 @@ export default function App() {
         onAnswer={handleAnswer}
         onComplete={handleRoundComplete}
         difficultyChange={round.difficultyChange}
+        reward={round.reward}
+        onOpenStickers={() => navigate({ name: 'stickers' })}
         onRestart={() => startPractice(roundPool)}
         onExit={goBack}
         error={practiceError}
       />
     );
+  } else if (route.name === 'stickers' && activeProfile) {
+    screen = <StickerBook profile={activeProfile} streak={practiceStreak(activeProfile.practiceDays)} onBack={goBack} />;
   } else if (route.name === 'manage' && parentUnlocked) {
     screen = (
       <>
@@ -404,6 +428,9 @@ export default function App() {
           onSelectProfile={selectProfile}
           onAddProfile={openAddChild}
           onStart={() => startPractice(practicePool)}
+          stickerCount={activeProfile?.stickers?.length ?? 0}
+          streak={practiceStreak(activeProfile?.practiceDays)}
+          onOpenStickers={() => navigate({ name: 'stickers' })}
           error={profilesError}
         />
 

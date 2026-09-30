@@ -23,6 +23,10 @@ type PracticePanelProps = {
   /** Opens the selected child's settings; the button is hidden when not given. */
   onEditProfile?: () => void;
   onStart: () => void;
+  /** The active child's sticker count and days-in-a-row practice streak. */
+  stickerCount?: number;
+  streak?: number;
+  onOpenStickers?: () => void;
   error?: string | null;
 };
 
@@ -39,6 +43,9 @@ export function PracticePanel({
   onAddProfile,
   onEditProfile,
   onStart,
+  stickerCount = 0,
+  streak = 0,
+  onOpenStickers,
   error,
 }: PracticePanelProps) {
   const name = activeProfile?.name ?? '';
@@ -118,6 +125,24 @@ export function PracticePanel({
                 sx={{ height: 40, borderRadius: 999, borderStyle: 'dashed' }}
               />
             </Stack>
+
+            {(stickerCount > 0 || streak >= 2) && (
+              <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+                {stickerCount > 0 && onOpenStickers && (
+                  <Chip
+                    label={`🏅 ${stickerCount} sticker${stickerCount === 1 ? '' : 's'}`}
+                    onClick={onOpenStickers}
+                    aria-label={`${name}'s stickers: ${stickerCount}`}
+                    sx={{ height: 36, borderRadius: 999, fontWeight: 700, bgcolor: '#fef3c7', '&:hover': { bgcolor: '#fde68a' } }}
+                  />
+                )}
+                {streak >= 2 && (
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    🌟 {streak} days in a row!
+                  </Typography>
+                )}
+              </Stack>
+            )}
 
             <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
               <Box sx={{ minWidth: 0 }}>

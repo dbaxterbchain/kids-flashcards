@@ -23,6 +23,7 @@ import {
   FlashcardSet,
   PracticeSettings,
   PromptMode,
+  Sticker,
 } from './types';
 
 export type { SaveResult } from './shareFile';
@@ -104,6 +105,19 @@ function readAdjustment(value: unknown): DifficultyChange | undefined {
   return at !== undefined && from !== undefined && to !== undefined ? { at, from, to } : undefined;
 }
 
+function readSticker(value: unknown): Sticker | null {
+  if (!isRecord(value)) return null;
+  const emoji = readText(value.emoji, 16);
+  const at = readNumber(value.at);
+  if (!emoji || at === undefined) return null;
+  return value.shiny === true ? { emoji, at, shiny: true } : { emoji, at };
+}
+
+const readPracticeDays = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((day): day is string => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)).slice(-60)
+    : undefined;
+
 function readProfile(value: unknown): ChildProfile | null {
   if (!isRecord(value)) return null;
   const id = readText(value.id, 100);
@@ -120,6 +134,12 @@ function readProfile(value: unknown): ChildProfile | null {
       ? value.recentResults.filter((result): result is boolean => typeof result === 'boolean').slice(-20)
       : undefined,
     lastAdjustment: readAdjustment(value.lastAdjustment),
+    stickers: Array.isArray(value.stickers)
+      ? readList(value.stickers, readSticker)
+          .filter((sticker): sticker is Sticker => sticker !== null)
+          .slice(-5000)
+      : undefined,
+    practiceDays: readPracticeDays(value.practiceDays),
   };
 }
 
