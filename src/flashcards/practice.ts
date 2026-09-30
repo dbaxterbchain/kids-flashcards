@@ -34,7 +34,7 @@ export const AVATAR_GROUPS: { label: string; avatars: AvatarOption[] }[] = [
       { emoji: '🦸‍♀️', label: 'Super girl', color: '#fbcfe8' },
       { emoji: '🦸‍♂️', label: 'Super boy', color: '#bfdbfe' },
       { emoji: '🦹', label: 'Villain', color: '#e9d5ff' },
-      { emoji: '🥷', label: 'Ninja', color: '#cbd5e1' },
+      { emoji: '💥', label: 'Kapow', color: '#fed7aa' },
       { emoji: '🛡️', label: 'Shield', color: '#fde68a' },
       { emoji: '⚡', label: 'Lightning', color: '#fef08a' },
       { emoji: '🕷️', label: 'Spider', color: '#fecdd3' },

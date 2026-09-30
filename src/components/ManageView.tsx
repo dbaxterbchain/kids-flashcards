@@ -6,6 +6,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import TuneIcon from '@mui/icons-material/Tune';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PrintIcon from '@mui/icons-material/Print';
@@ -37,13 +38,16 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { voiceStatus } from '../audio/voices';
 import { Backup, BackupError, SaveResult } from '../flashcards/backup';
-import { LibrarySet } from '../flashcards/library';
+import { languageLabel } from '../flashcards/languages';
+import { describeLibraryUpdate, LibrarySet, libraryUpdate, LibraryUpdate, loadLibrary } from '../flashcards/library';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { IncomingSet, parseSetPackage, SetPackage } from '../flashcards/setPackage';
 import { ChildProfile, DifficultyChange, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
 import { RemoveSetOptions } from '../hooks/useCardLibrary';
+import { useVoices } from '../hooks/useVoices';
 import { BackupSection } from './BackupSection';
 import { ChildAvatar } from './ChildAvatar';
 import { ChildProgressDialog } from './ChildProgressDialog';
@@ -52,6 +56,7 @@ import { FlashcardGrid } from './FlashcardGrid';
 import { SetImportDialog } from './SetImportDialog';
 import { PrintSetDialog } from './PrintSetDialog';
 import { SetLibraryDialog } from './SetLibraryDialog';
+import { VoicesSection } from './VoicesSection';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
 
@@ -70,7 +75,8 @@ type ManageViewProps = {
   onEditCard: (card: FlashcardData) => void;
   onDeleteCard: (card: FlashcardData) => void;
   onCreateSet: (name: string) => Promise<unknown>;
-  onRenameSet: (id: string, name: string) => Promise<void>;
+  /** Changes a set's name and its "How this set works" introduction. */
+  onUpdateSet: (id: string, changes: { name: string; about?: string }) => Promise<void>;
   onDeleteSet: (set: FlashcardSet, options: RemoveSetOptions) => Promise<void>;
   onToggleSetHidden: (setId: string) => void;
   /** Saves or shares a file with the set's cards, pictures and recordings. */
@@ -78,6 +84,8 @@ type ManageViewProps = {
   /** Adds a shared set as a new set. */
   onImportSet: (pkg: SetPackage) => Promise<FlashcardSet>;
   onAddLibrarySet: (entry: LibrarySet) => Promise<void>;
+  /** Fills in what's new in the library (like "How it works" explanations) for sets added from it before. */
+  onUpdateLibrarySets: (updates: LibraryUpdate[]) => Promise<void>;
   /** A set file shared to the app or opened with it, to preview and import. */
   incomingSet?: IncomingSet | null;
   onIncomingSetHandled?: () => void;
@@ -106,6 +114,18 @@ const listSx = { bgcolor: 'background.paper', borderRadius: 2, border: '1px soli
 const hasNoSet = (card: FlashcardData) => !card.setIds || card.setIds.length === 0;
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+/** E.g. "“How it works” explanations and new pictures for “Binary numbers” and 2 more sets". */
+function libraryUpdateSummary(updates: LibraryUpdate[]) {
+  const kinds = [
+    updates.some((update) => update.explanations > 0 || update.about) && '“How it works” explanations',
+    updates.some((update) => update.pictures > 0) && 'new pictures',
+    updates.some((update) => update.prompts > 0) && 'talk-about-it questions',
+  ].filter((kind): kind is string => Boolean(kind));
+  const what = kinds.length <= 1 ? kinds.join('') : `${kinds.slice(0, -1).join(', ')} and ${kinds[kinds.length - 1]}`;
+  const [first, ...rest] = updates.map((update) => `“${update.set.name}”`);
+  return rest.length === 0 ? `${what} for ${first}` : `${what} for ${first} and ${plural(rest.length, 'more set')}`;
+}
 
 // Automatic changes to the number of choices are mentioned for two weeks.
 const RECENT_ADJUSTMENT_MS = 14 * 24 * 60 * 60 * 1000;
@@ -300,19 +320,23 @@ function SetsTab({
   sets,
   hiddenSetIds,
   onCreateSet,
-  onRenameSet,
+  onUpdateSet,
   onDeleteSet,
   onToggleSetHidden,
   onShareSet,
   onImportSet,
   onAddLibrarySet,
+  onUpdateLibrarySets,
   incomingSet,
   onIncomingSetHandled,
 }: ManageViewProps) {
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [librarySets, setLibrarySets] = useState<LibrarySet[] | null>(null);
+  const [updatingLibrary, setUpdatingLibrary] = useState(false);
   const [newName, setNewName] = useState('');
-  const [renaming, setRenaming] = useState<FlashcardSet | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [editing, setEditing] = useState<FlashcardSet | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAbout, setEditAbout] = useState('');
   const [menu, setMenu] = useState<{ anchor: HTMLElement; set: FlashcardSet } | null>(null);
   const [deleting, setDeleting] = useState<FlashcardSet | null>(null);
   const [printing, setPrinting] = useState<FlashcardSet | null>(null);
@@ -322,6 +346,55 @@ function SetsTab({
   const rows = [...sets, ...(cards.some(hasNoSet) ? [{ id: UNCATEGORIZED_SET_ID, name: 'No set' }] : [])];
   const countFor = (setId: string) =>
     setId === UNCATEGORIZED_SET_ID ? cards.filter(hasNoSet).length : cards.filter((card) => card.setIds?.includes(setId)).length;
+  // A language the set's cards are read in that this device has no voice for (recorded cards don't need one).
+  useVoices();
+  const voicelessLanguage = (setId: string) =>
+    cards.find(
+      (card) =>
+        card.lang && !card.audioUrl && (setId === UNCATEGORIZED_SET_ID ? hasNoSet(card) : card.setIds?.includes(setId)) &&
+        voiceStatus(card.lang) === 'missing',
+    )?.lang;
+
+  // Sets added from the library can pick up what's been added to it since, like explanations.
+  const hasLibrarySets = sets.some((set) => set.id.startsWith('library-'));
+  useEffect(() => {
+    if (!hasLibrarySets || librarySets) return undefined;
+    let cancelled = false;
+    loadLibrary()
+      .then((entries) => {
+        if (!cancelled) setLibrarySets(entries);
+      })
+      .catch((error) => console.warn('Unable to check the set library for updates', error));
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLibrarySets, librarySets]);
+  const libraryUpdates = useMemo(
+    () =>
+      (librarySets ?? [])
+        .map((entry) => libraryUpdate(entry, sets, cards))
+        .filter((update): update is LibraryUpdate => update !== null),
+    [librarySets, sets, cards],
+  );
+
+  const handleUpdateLibrary = async (updates: LibraryUpdate[]) => {
+    setUpdatingLibrary(true);
+    try {
+      await onUpdateLibrarySets(updates);
+      setMessage({
+        severity: 'success',
+        text:
+          updates.length === 1
+            ? `Added ${describeLibraryUpdate(updates[0])} to “${updates[0].set.name}”.`
+            : `Updated ${plural(updates.length, 'set')} from the library.`,
+      });
+    } catch (updateError) {
+      console.error('Unable to update sets from the library', updateError);
+      setMessage({ severity: 'error', text: 'Unable to update those sets right now.' });
+    } finally {
+      setUpdatingLibrary(false);
+    }
+  };
 
   const handleAdd = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -335,15 +408,15 @@ function SetsTab({
     }
   };
 
-  const handleRename = async (event: FormEvent<HTMLFormElement>) => {
+  const handleEdit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!renaming || !renameValue.trim()) return;
+    if (!editing || !editName.trim()) return;
     try {
-      await onRenameSet(renaming.id, renameValue);
-      setRenaming(null);
-    } catch (renameError) {
-      console.error(renameError);
-      setMessage({ severity: 'error', text: 'Unable to rename that set right now.' });
+      await onUpdateSet(editing.id, { name: editName, about: editAbout });
+      setEditing(null);
+    } catch (editError) {
+      console.error(editError);
+      setMessage({ severity: 'error', text: 'Unable to save that set right now.' });
     }
   };
 
@@ -417,6 +490,20 @@ function SetsTab({
           <input hidden type="file" accept="application/json,.json" onChange={handleImportFile} />
         </Button>
       </Stack>
+      {libraryUpdates.length > 0 && (
+        <Alert
+          severity="info"
+          icon={<LightbulbIcon />}
+          action={
+            <Button color="inherit" size="small" disabled={updatingLibrary} onClick={() => void handleUpdateLibrary(libraryUpdates)}>
+              {updatingLibrary ? 'Updating…' : 'Update'}
+            </Button>
+          }
+        >
+          New in the set library: {libraryUpdateSummary(libraryUpdates)}. Only what&apos;s missing is added, so your own
+          changes stay.
+        </Alert>
+      )}
       <Stack component="form" onSubmit={handleAdd} direction="row" spacing={1} alignItems="flex-start">
         <TextField
           size="small"
@@ -438,6 +525,7 @@ function SetsTab({
           const shown = !hiddenSetIds.includes(set.id);
           const editable = set.id !== UNCATEGORIZED_SET_ID;
           const count = countFor(set.id);
+          const voiceless = voicelessLanguage(set.id);
           return (
             <ListItem
               key={set.id}
@@ -473,7 +561,16 @@ function SetsTab({
               />
               <ListItemText
                 primary={set.name}
-                secondary={`${plural(count, 'card')} · ${shown ? 'Shown to kids' : 'Hidden from kids'}`}
+                secondary={
+                  <>
+                    {`${plural(count, 'card')} · ${shown ? 'Shown to kids' : 'Hidden from kids'}`}
+                    {voiceless && (
+                      <Box component="span" sx={{ display: 'block', color: 'warning.dark' }}>
+                        No {languageLabel(voiceless)} voice on this device. See Settings.
+                      </Box>
+                    )}
+                  </>
+                }
               />
             </ListItem>
           );
@@ -484,15 +581,16 @@ function SetsTab({
         <MenuItem
           onClick={() => {
             if (!menu) return;
-            setRenaming(menu.set);
-            setRenameValue(menu.set.name);
+            setEditing(menu.set);
+            setEditName(menu.set.name);
+            setEditAbout(menu.set.about ?? '');
             setMenu(null);
           }}
         >
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
-          Rename
+          Edit
         </MenuItem>
         <MenuItem
           disabled={Boolean(menu) && countFor(menu?.set.id ?? '') === 0}
@@ -522,23 +620,36 @@ function SetsTab({
         </MenuItem>
       </Menu>
 
-      <Dialog open={Boolean(renaming)} onClose={() => setRenaming(null)} maxWidth="xs" fullWidth>
-        <form onSubmit={handleRename}>
-          <DialogTitle>Rename set</DialogTitle>
+      <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} maxWidth="sm" fullWidth>
+        <form onSubmit={handleEdit}>
+          <DialogTitle>Edit set</DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
               fullWidth
               margin="dense"
               label="Name"
-              value={renameValue}
-              onChange={(event) => setRenameValue(event.target.value)}
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
               slotProps={{ htmlInput: { maxLength: 30 } }}
+            />
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              maxRows={10}
+              margin="dense"
+              label="How this set works (optional)"
+              placeholder="e.g. Each card shows a number in binary. Read the places from the right: 1, 2, 4, 8."
+              helperText="Shown on the set's page, for sets with ideas that need explaining."
+              value={editAbout}
+              onChange={(event) => setEditAbout(event.target.value)}
+              slotProps={{ htmlInput: { maxLength: 1000 } }}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setRenaming(null)}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={!renameValue.trim()}>
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={!editName.trim()}>
               Save
             </Button>
           </DialogActions>
@@ -552,7 +663,14 @@ function SetsTab({
         onClose={() => setPrinting(null)}
       />
       <SetImportDialog pkg={importing} sets={sets} onClose={() => setImporting(null)} onImport={handleImport} />
-      <SetLibraryDialog open={libraryOpen} sets={sets} onClose={() => setLibraryOpen(false)} onAdd={onAddLibrarySet} />
+      <SetLibraryDialog
+        open={libraryOpen}
+        sets={sets}
+        cards={cards}
+        onClose={() => setLibraryOpen(false)}
+        onAdd={onAddLibrarySet}
+        onUpdate={(update: LibraryUpdate) => onUpdateLibrarySets([update])}
+      />
 
       <Snackbar
         open={Boolean(message)}
@@ -657,6 +775,7 @@ function ChildrenTab({ cards, profiles, sets, hiddenSetIds, onAddChild, onEditCh
 }
 
 function SettingsTab({
+  cards,
   speakOnFlip,
   sayIt,
   onSayItChange,
@@ -682,6 +801,8 @@ function SettingsTab({
           Uses your recording when a card has one, and the device&apos;s voice when it doesn&apos;t.
         </Typography>
       </Box>
+
+      <VoicesSection cards={cards} />
 
       <Box>
         <FormControlLabel

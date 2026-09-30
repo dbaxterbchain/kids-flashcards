@@ -1,15 +1,19 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { canRecord } from '../audio/sound';
 import { GAME_INFO, GameKind } from '../flashcards/games';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { ChildAvatar } from './ChildAvatar';
+import { Explanation, ExplainDialog } from './ExplainDialog';
 import { FlashcardGrid } from './FlashcardGrid';
 import { SayItDialog } from './SayItDialog';
 
 type PlaySetViewProps = {
   title: string;
+  /** The set's "How this set works" introduction. */
+  about?: string;
   cards: FlashcardData[];
   speakOnFlip: boolean;
   /** The child who would practice these cards, if any. */
@@ -26,6 +30,7 @@ type PlaySetViewProps = {
 /** One set's cards for kids to flip through, with a shortcut to practice just this set. */
 export function PlaySetView({
   title,
+  about,
   cards,
   speakOnFlip,
   practiceProfile,
@@ -36,6 +41,8 @@ export function PlaySetView({
   sayIt = false,
 }: PlaySetViewProps) {
   const [sayingCard, setSayingCard] = useState<FlashcardData | null>(null);
+  const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const explained = cards.some((card) => card.explain);
   return (
     <Box component="section" aria-labelledby="set-heading">
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
@@ -98,11 +105,28 @@ export function PlaySetView({
           ))}
         </Stack>
       )}
+      {about && (
+        <Button
+          variant="outlined"
+          color="warning"
+          startIcon={<LightbulbIcon />}
+          onClick={() => setExplanation({ setName: title, text: about })}
+          sx={{ mb: 1.5, bgcolor: 'background.paper', borderRadius: 999 }}
+        >
+          How this set works
+        </Button>
+      )}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Tap a card to flip it over.
+        {explained ? 'Tap a card to flip it over. Tap the light bulb to find out how it works.' : 'Tap a card to flip it over.'}
       </Typography>
-      <FlashcardGrid cards={cards} speakOnFlip={speakOnFlip} onSayIt={sayIt && canRecord() ? setSayingCard : undefined} />
+      <FlashcardGrid
+        cards={cards}
+        speakOnFlip={speakOnFlip}
+        onSayIt={sayIt && canRecord() ? setSayingCard : undefined}
+        onExplain={(card) => setExplanation({ card, text: card.explain ?? '' })}
+      />
       <SayItDialog card={sayingCard} onClose={() => setSayingCard(null)} />
+      <ExplainDialog explanation={explanation} onClose={() => setExplanation(null)} />
     </Box>
   );
 }

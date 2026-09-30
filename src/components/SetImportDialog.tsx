@@ -1,5 +1,6 @@
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
+import { explainedNote } from '../flashcards/explain';
 import { languageLabel } from '../flashcards/languages';
 import { SetPackage, uniqueSetName } from '../flashcards/setPackage';
 import { FlashcardSet } from '../flashcards/types';
@@ -27,6 +28,7 @@ function describe(pkg: SetPackage) {
     pictures > 0 && plural(pictures, 'picture'),
     recordings > 0 && plural(recordings, 'recording'),
     languages.length > 0 && `read in ${languages.map(languageLabel).join(', ')}`,
+    explainedNote(pkg.cards),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -72,6 +74,11 @@ export function SetImportDialog({ pkg, sets, onClose, onImport }: SetImportDialo
                 {describe(pkg)}
               </Typography>
             </Box>
+            {pkg.about && (
+              <Typography variant="body2" className="set-import-about">
+                {pkg.about}
+              </Typography>
+            )}
             <Box className="set-import-preview" aria-hidden>
               {pkg.cards.slice(0, PREVIEW_COUNT).map((card) => (
                 <div key={card.id} className="set-import-preview__card">

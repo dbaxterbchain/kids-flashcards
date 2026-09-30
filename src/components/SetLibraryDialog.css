@@ -72,3 +72,24 @@
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
+
+.library-about {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+  background: #fffbeb;
+}
+
+.library-about__heading.MuiTypography-root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.library-about__heading .MuiSvgIcon-root {
+  color: #d97706;
+}

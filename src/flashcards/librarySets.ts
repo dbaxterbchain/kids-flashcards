@@ -1,7 +1,34 @@
 import { buildNumberCard, numberPalette, SVG_FONT_STACK } from './defaultData';
 import { slugifySetName } from './fileUtils';
 import { LibraryCard, LibrarySet } from './library';
+import {
+  ANIMAL_GROUP_EXPLANATIONS,
+  BODY_EXPLANATIONS,
+  CODING_EXPLANATIONS,
+  COMPUTER_PART_EXPLANATIONS,
+  DAY_EXPLANATIONS,
+  ELEMENT_EXPLANATIONS,
+  explainBinary,
+  explainClock,
+  explainDouble,
+  explainFraction,
+  explainMakeTen,
+  explainSkipCounting,
+  explainTakeAway,
+  explainTeen,
+  explainTimes,
+  FLAG_EXPLANATIONS,
+  LIFE_CYCLE_EXPLANATIONS,
+  MONTH_EXPLANATIONS,
+  PLANET_EXPLANATIONS,
+  PLANT_PART_EXPLANATIONS,
+  SCIENCE_TOOL_EXPLANATIONS,
+  SET_ABOUT,
+  SHAPE_EXPLANATIONS,
+  STATE_EXPLANATIONS,
+} from './libraryExplain';
 import { FLAGS, flagImage } from './libraryFlags';
+import { LOGIC_GATES_ABOUT, LOGIC_PUZZLES_ABOUT, logicGateCards, logicPuzzleCards } from './libraryLogic';
 
 // Ready-made sets for the set library. Pictures are emoji (drawn by the device's own emoji font) or
 // small generated drawings, so the whole library costs almost nothing to download or store.
@@ -37,6 +64,23 @@ function withPrompts(cards: LibraryCard[], prompts: Record<string, string>): Lib
   const unknown = Object.keys(prompts).filter((name) => !cards.some((card) => card.name === name));
   if (unknown.length > 0) throw new Error(`Prompts for cards that don't exist: ${unknown.join(', ')}`);
   return cards.map((card) => (prompts[card.name] ? { ...card, prompt: prompts[card.name] } : card));
+}
+
+/** Adds "How it works" explanations to cards, by card key. */
+function withExplanations(cards: LibraryCard[], explanations: Record<string, string>): LibraryCard[] {
+  const unknown = Object.keys(explanations).filter((key) => !cards.some((card) => card.key === key));
+  if (unknown.length > 0) throw new Error(`Explanations for cards that don't exist: ${unknown.join(', ')}`);
+  return cards.map((card) => (explanations[card.key] ? { ...card, explain: explanations[card.key] } : card));
+}
+
+/** A math fact: the question on the front, the answer on the back, and how to work it out. */
+type Fact = { front: string; name: string; explain: string };
+
+function factCards(facts: Fact[], options?: TextOptions): LibraryCard[] {
+  return textCards(
+    facts.map(({ front, name }): Pair => [front, name]),
+    options,
+  ).map((card, index) => ({ ...card, explain: facts[index].explain }));
 }
 
 function pictureCards(items: { name: string; image: string }[], background: string): LibraryCard[] {
@@ -197,6 +241,42 @@ function planetCards(): LibraryCard[] {
   );
 }
 
+// --- The human body ------------------------------------------------------------------------------
+
+// Drawn rather than emoji: the heart and lungs emoji are too new for Windows 10, which shows empty boxes.
+function heartImage() {
+  return svg(
+    // Blood vessels at the top: blue ones bring blood in, and the red one (the aorta) carries it out.
+    `<path d="M122 112 V60" stroke="#3b82f6" stroke-width="20" stroke-linecap="round" fill="none"/>` +
+      `<path d="M178 120 C184 94 204 84 228 82" stroke="#6366f1" stroke-width="18" stroke-linecap="round" fill="none"/>` +
+      `<path d="M150 118 C146 62 198 42 214 76 C219 88 216 100 208 108" stroke="#dc2626" stroke-width="24" stroke-linecap="round" fill="none"/>` +
+      // The heart itself, with its tip pointing down and to one side.
+      `<path d="M150 104 C112 92 76 112 76 154 C76 202 124 238 176 260 C214 234 232 198 228 158 C224 118 190 98 150 104 Z" fill="#ef4444"/>` +
+      `<path d="M170 112 C150 158 158 212 180 254" stroke="#b91c1c" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.7"/>` +
+      `<ellipse cx="114" cy="152" rx="13" ry="27" fill="#ffffff" opacity="0.35" transform="rotate(18 114 152)"/>`,
+  );
+}
+
+function lungsImage() {
+  // One lung on each side of the middle: narrow at the top, wide at the bottom.
+  const lung = (side: 1 | -1) => {
+    const x = (offset: number) => 150 + side * offset;
+    return `<path d="M${x(22)} 100 C${x(30)} 72 ${x(64)} 70 ${x(84)} 110 C${x(102)} 146 ${x(110)} 206 ${x(102)} 236 C${x(94)} 262 ${x(58)} 268 ${x(32)} 252 C${x(20)} 244 ${x(18)} 200 ${x(22)} 150 Z" fill="#fb7185"/>`;
+  };
+  // The windpipe splits into tubes that branch out through each lung, like an upside-down tree.
+  const branches = ([1, -1] as const)
+    .map((side) => {
+      const x = (offset: number) => 150 + side * offset;
+      return `<path d="M150 120 C150 134 ${x(14)} 142 ${x(30)} 154 M${x(30)} 154 L${x(56)} 176 M${x(30)} 154 L${x(48)} 212 M${x(44)} 166 L${x(70)} 150 M${x(52)} 184 L${x(78)} 214" stroke="#fecdd3" stroke-width="7" stroke-linecap="round" fill="none"/>`;
+    })
+    .join('');
+  return svg(
+    `${lung(1)}${lung(-1)}${branches}` +
+      `<path d="M150 34 V122" stroke="#fecdd3" stroke-width="20" stroke-linecap="round"/>` +
+      `<path d="M142 50 H158 M142 66 H158 M142 82 H158 M142 98 H158" stroke="#f472b6" stroke-width="4" stroke-linecap="round"/>`,
+  );
+}
+
 // --- Plants and life cycles ---------------------------------------------------------------------
 
 type PlantPart = 'roots' | 'stem' | 'leaves' | 'flower';
@@ -243,16 +323,23 @@ function tadpoleImage() {
   );
 }
 
-type MixedItem = { name: string; emoji?: string; image?: string };
+type MixedItem = {
+  name: string;
+  emoji?: string;
+  image?: string;
+  /** The emoji a drawing replaced, so cards added with the emoji can get the drawing. */
+  replaces?: string;
+};
 
 /** Cards with an emoji or a drawing on the front, in the order given. */
 function mixedCards(items: MixedItem[]): LibraryCard[] {
-  return items.map(({ name, emoji, image }, index) => ({
+  return items.map(({ name, emoji, image, replaces }, index) => ({
     key: slugifySetName(name),
     name,
     imageUrl: image ?? '',
     frontText: emoji,
     backgroundColor: PASTELS[index % PASTELS.length],
+    ...(replaces ? { previousFronts: [replaces] } : {}),
   }));
 }
 
@@ -283,6 +370,7 @@ function teenNumberCards(): LibraryCard[] {
     name,
     imageUrl: teenNumberImage(index + 11),
     backgroundColor: numberPalette[(index + 1) % numberPalette.length],
+    explain: explainTeen(index + 11, name),
   }));
 }
 
@@ -396,7 +484,7 @@ function clockCards(): LibraryCard[] {
   return pictureCards(
     times.map(([hours, minutes, name]) => ({ name, image: clockImage(hours, minutes) })),
     '#dbeafe',
-  );
+  ).map((card, index) => ({ ...card, explain: explainClock(...times[index]) }));
 }
 
 // --- Fractions -----------------------------------------------------------------------------------
@@ -427,7 +515,7 @@ function fractionCards(): LibraryCard[] {
   return pictureCards(
     fractions.map(([parts, shaded, name]) => ({ name, image: fractionImage(parts, shaded) })),
     '#fef3c7',
-  );
+  ).map((card, index) => ({ ...card, explain: explainFraction(...fractions[index]) }));
 }
 
 // --- Math facts ----------------------------------------------------------------------------------
@@ -437,8 +525,8 @@ const range = (from: number, to: number) => Array.from({ length: to - from + 1 }
 const MINUS = '−';
 
 // Each answer appears once in a set, so a question never has two right answers.
-const doubles: Pair[] = range(1, 10).map((n) => [`${n} + ${n}`, String(n * 2)]);
-const takeAway: Pair[] = [
+const doubles: Fact[] = range(1, 10).map((n) => ({ front: `${n} + ${n}`, name: String(n * 2), explain: explainDouble(n) }));
+const takeAway: Fact[] = [
   [3, 3],
   [4, 3],
   [5, 3],
@@ -449,12 +537,17 @@ const takeAway: Pair[] = [
   [9, 2],
   [10, 2],
   [10, 1],
-].map(([a, b]) => [`${a} ${MINUS} ${b}`, String(a - b)]);
-const makeTen: Pair[] = range(1, 9).map((n) => [`${n} + ? = 10`, String(10 - n)]);
-const timesTable = (factor: number): Pair[] => range(1, 10).map((n) => [`${factor} × ${n}`, String(factor * n)]);
-const binary: Pair[] = range(0, 15).map((n) => [n.toString(2).padStart(4, '0'), String(n)]);
+].map(([a, b]) => ({ front: `${a} ${MINUS} ${b}`, name: String(a - b), explain: explainTakeAway(a, b) }));
+const makeTen: Fact[] = range(1, 9).map((n) => ({ front: `${n} + ? = 10`, name: String(10 - n), explain: explainMakeTen(n) }));
+const timesTable = (factor: number): Fact[] =>
+  range(1, 10).map((n) => ({ front: `${factor} × ${n}`, name: String(factor * n), explain: explainTimes(factor, n) }));
+const binary: Fact[] = range(0, 15).map((n) => ({
+  front: n.toString(2).padStart(4, '0'),
+  name: String(n),
+  explain: explainBinary(n),
+}));
 // Count on by the step: "2, 4, 6, ?" is 8. Each answer appears once.
-const skipCounting: Pair[] = [
+const skipCounting: Fact[] = [
   [2, 2],
   [3, 3],
   [5, 5],
@@ -467,7 +560,7 @@ const skipCounting: Pair[] = [
   [11, 1],
 ].map(([start, step]) => {
   const terms = [start, start + step, start + 2 * step];
-  return [`${terms.join(', ')}, ?`, String(start + 3 * step)];
+  return { front: `${terms.join(', ')}, ?`, name: String(start + 3 * step), explain: explainSkipCounting(start, step) };
 });
 
 // --- Reading -------------------------------------------------------------------------------------
@@ -536,11 +629,19 @@ const MONTHS = [
 ];
 
 /** Short names on the front ("Mon"), full names on the back, asking what comes next. */
-function calendarCards(names: string[], unit: 'day' | 'month', background: string): LibraryCard[] {
-  return textCards(
-    names.map((name): Pair => [name.slice(0, 3), name]),
-    { background },
-  ).map((card) => ({ ...card, prompt: `What ${unit} comes after ${card.name}?` }));
+function calendarCards(
+  names: string[],
+  unit: 'day' | 'month',
+  background: string,
+  explanations: Record<string, string>,
+): LibraryCard[] {
+  return withExplanations(
+    textCards(
+      names.map((name): Pair => [name.slice(0, 3), name]),
+      { background },
+    ).map((card) => ({ ...card, prompt: `What ${unit} comes after ${card.name}?` })),
+    explanations,
+  );
 }
 
 // From the Dolch sight word lists, most common first.
@@ -548,7 +649,7 @@ const sightWords = (words: string[]): Pair[] => words.map((word) => [word, word]
 
 // --- The library ---------------------------------------------------------------------------------
 
-export const LIBRARY_SETS: LibrarySet[] = [
+const SETS: LibrarySet[] = [
   // Animals
   {
     id: 'farm-animals',
@@ -691,24 +792,27 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'animals',
     minAge: 5,
     description: 'Mammal, bird, reptile, amphibian, fish or insect? Each card shows an animal to sort.',
-    cards: textCards([
-      ['🐶', 'Mammal', 'dog'],
-      ['🐘', 'Mammal', 'elephant'],
-      ['🐳', 'Mammal', 'whale'],
-      ['🦇', 'Mammal', 'bat'],
-      ['🐦', 'Bird', 'bird'],
-      ['🐧', 'Bird', 'penguin'],
-      ['🦉', 'Bird', 'owl'],
-      ['🐍', 'Reptile', 'snake'],
-      ['🐢', 'Reptile', 'turtle'],
-      ['🐊', 'Reptile', 'crocodile'],
-      ['🐸', 'Amphibian', 'frog'],
-      ['🐟', 'Fish', 'fish'],
-      ['🦈', 'Fish', 'shark'],
-      ['🐝', 'Insect', 'bee'],
-      ['🐞', 'Insect', 'ladybug'],
-      ['🦋', 'Insect', 'butterfly'],
-    ]),
+    cards: withExplanations(
+      textCards([
+        ['🐶', 'Mammal', 'dog'],
+        ['🐘', 'Mammal', 'elephant'],
+        ['🐳', 'Mammal', 'whale'],
+        ['🦇', 'Mammal', 'bat'],
+        ['🐦', 'Bird', 'bird'],
+        ['🐧', 'Bird', 'penguin'],
+        ['🦉', 'Bird', 'owl'],
+        ['🐍', 'Reptile', 'snake'],
+        ['🐢', 'Reptile', 'turtle'],
+        ['🐊', 'Reptile', 'crocodile'],
+        ['🐸', 'Amphibian', 'frog'],
+        ['🐟', 'Fish', 'fish'],
+        ['🦈', 'Fish', 'shark'],
+        ['🐝', 'Insect', 'bee'],
+        ['🐞', 'Insect', 'ladybug'],
+        ['🦋', 'Insect', 'butterfly'],
+      ]),
+      ANIMAL_GROUP_EXPLANATIONS,
+    ),
   },
 
   // Everyday words
@@ -1108,7 +1212,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 5,
     description: 'The Sun, the Moon and the eight planets, drawn to tell apart.',
-    cards: planetCards(),
+    cards: withExplanations(planetCards(), PLANET_EXPLANATIONS),
   },
   {
     id: 'solid-liquid-gas',
@@ -1116,17 +1220,20 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 5,
     description: 'Is it a solid, a liquid or a gas? Each card shows something to sort.',
-    cards: textCards([
-      ['🧊', 'Solid', 'ice'],
-      ['🧱', 'Solid', 'brick'],
-      ['🥄', 'Solid', 'spoon'],
-      ['💧', 'Liquid', 'water'],
-      ['🥛', 'Liquid', 'milk'],
-      ['🍯', 'Liquid', 'honey'],
-      ['💨', 'Gas', 'air'],
-      ['🎈', 'Gas', 'balloon'],
-      ['♨️', 'Gas', 'steam'],
-    ]),
+    cards: withExplanations(
+      textCards([
+        ['🧊', 'Solid', 'ice'],
+        ['🧱', 'Solid', 'brick'],
+        ['🥄', 'Solid', 'spoon'],
+        ['💧', 'Liquid', 'water'],
+        ['🥛', 'Liquid', 'milk'],
+        ['🍯', 'Liquid', 'honey'],
+        ['💨', 'Gas', 'air'],
+        ['🎈', 'Gas', 'balloon'],
+        ['♨️', 'Gas', 'steam'],
+      ]),
+      STATE_EXPLANATIONS,
+    ),
   },
   {
     id: 'science-tools',
@@ -1134,20 +1241,23 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 6,
     description: 'Microscopes, magnets, test tubes and other tools scientists use.',
-    cards: textCards([
-      ['🔬', 'Microscope'],
-      ['🔭', 'Telescope'],
-      ['🧲', 'Magnet'],
-      ['🧪', 'Test tube'],
-      ['🌡️', 'Thermometer'],
-      ['⚖️', 'Scale'],
-      ['🔍', 'Magnifying glass'],
-      ['🧫', 'Petri dish'],
-      ['🥽', 'Goggles'],
-      ['🔋', 'Battery'],
-      ['⏱️', 'Stopwatch'],
-      ['📏', 'Ruler'],
-    ]),
+    cards: withExplanations(
+      textCards([
+        ['🔬', 'Microscope'],
+        ['🔭', 'Telescope'],
+        ['🧲', 'Magnet'],
+        ['🧪', 'Test tube'],
+        ['🌡️', 'Thermometer'],
+        ['⚖️', 'Scale'],
+        ['🔍', 'Magnifying glass'],
+        ['🧫', 'Petri dish'],
+        ['🥽', 'Goggles'],
+        ['🔋', 'Battery'],
+        ['⏱️', 'Stopwatch'],
+        ['📏', 'Ruler'],
+      ]),
+      SCIENCE_TOOL_EXPLANATIONS,
+    ),
   },
   {
     id: 'element-symbols',
@@ -1155,24 +1265,27 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 9,
     description: 'Chemical symbols for common elements, from H for hydrogen to Au for gold.',
-    cards: textCards(
-      [
-        ['H', 'Hydrogen'],
-        ['He', 'Helium'],
-        ['C', 'Carbon'],
-        ['N', 'Nitrogen'],
-        ['O', 'Oxygen'],
-        ['Na', 'Sodium'],
-        ['Mg', 'Magnesium'],
-        ['Cl', 'Chlorine'],
-        ['K', 'Potassium'],
-        ['Ca', 'Calcium'],
-        ['Fe', 'Iron'],
-        ['Cu', 'Copper'],
-        ['Ag', 'Silver'],
-        ['Au', 'Gold'],
-      ],
-      { background: '#e0f2fe' },
+    cards: withExplanations(
+      textCards(
+        [
+          ['H', 'Hydrogen'],
+          ['He', 'Helium'],
+          ['C', 'Carbon'],
+          ['N', 'Nitrogen'],
+          ['O', 'Oxygen'],
+          ['Na', 'Sodium'],
+          ['Mg', 'Magnesium'],
+          ['Cl', 'Chlorine'],
+          ['K', 'Potassium'],
+          ['Ca', 'Calcium'],
+          ['Fe', 'Iron'],
+          ['Cu', 'Copper'],
+          ['Ag', 'Silver'],
+          ['Au', 'Gold'],
+        ],
+        { background: '#e0f2fe' },
+      ),
+      ELEMENT_EXPLANATIONS,
     ),
   },
 
@@ -1199,33 +1312,36 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 4,
     description: 'How butterflies, frogs, chickens and plants grow, one stage at a time.',
-    cards: withPrompts(
-      mixedCards([
-        { name: 'Egg', emoji: '🥚' },
-        { name: 'Caterpillar', emoji: '🐛' },
-        { name: 'Chrysalis', image: chrysalisImage() },
-        { name: 'Butterfly', emoji: '🦋' },
-        { name: 'Tadpole', image: tadpoleImage() },
-        { name: 'Frog', emoji: '🐸' },
-        { name: 'Chick', emoji: '🐣' },
-        { name: 'Hen', emoji: '🐔' },
-        { name: 'Seed', emoji: '🌰' },
-        { name: 'Sprout', emoji: '🌱' },
-        { name: 'Flower', emoji: '🌻' },
-      ]),
-      {
-        Egg: 'What can hatch out of an egg?',
-        Caterpillar: 'What will this caterpillar turn into?',
-        Chrysalis: "What's changing inside a chrysalis?",
-        Butterfly: 'A butterfly started as an egg. What came next?',
-        Tadpole: 'What will this tadpole grow into?',
-        Frog: 'Frogs start as eggs in the water. What hatches out?',
-        Chick: 'What did this chick hatch from?',
-        Hen: 'What does a hen lay?',
-        Seed: 'What does a seed need to grow?',
-        Sprout: 'What will this sprout grow into?',
-        Flower: 'Where do new seeds come from?',
-      },
+    cards: withExplanations(
+      withPrompts(
+        mixedCards([
+          { name: 'Egg', emoji: '🥚' },
+          { name: 'Caterpillar', emoji: '🐛' },
+          { name: 'Chrysalis', image: chrysalisImage() },
+          { name: 'Butterfly', emoji: '🦋' },
+          { name: 'Tadpole', image: tadpoleImage() },
+          { name: 'Frog', emoji: '🐸' },
+          { name: 'Chick', emoji: '🐣' },
+          { name: 'Hen', emoji: '🐔' },
+          { name: 'Seed', emoji: '🌰' },
+          { name: 'Sprout', emoji: '🌱' },
+          { name: 'Flower', emoji: '🌻' },
+        ]),
+        {
+          Egg: 'What can hatch out of an egg?',
+          Caterpillar: 'What will this caterpillar turn into?',
+          Chrysalis: "What's changing inside a chrysalis?",
+          Butterfly: 'A butterfly started as an egg. What came next?',
+          Tadpole: 'What will this tadpole grow into?',
+          Frog: 'Frogs start as eggs in the water. What hatches out?',
+          Chick: 'What did this chick hatch from?',
+          Hen: 'What does a hen lay?',
+          Seed: 'What does a seed need to grow?',
+          Sprout: 'What will this sprout grow into?',
+          Flower: 'Where do new seeds come from?',
+        },
+      ),
+      LIFE_CYCLE_EXPLANATIONS,
     ),
   },
   {
@@ -1234,30 +1350,33 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 4,
     description: 'Roots, stem, leaves and flower, each shown in color on the plant, plus seeds and fruit.',
-    cards: withPrompts(
-      [
-        ...pictureCards(
-          [
-            { name: 'Roots', image: plantImage('roots') },
-            { name: 'Stem', image: plantImage('stem') },
-            { name: 'Leaves', image: plantImage('leaves') },
-            { name: 'Flower', image: plantImage('flower') },
-          ],
-          '#e0f2fe',
-        ),
-        ...textCards([
-          ['🌰', 'Seed'],
-          ['🍎', 'Fruit'],
-        ]),
-      ],
-      {
-        Roots: 'Roots drink water from the soil. Where are they?',
-        Stem: 'The stem carries water up the plant.',
-        Leaves: 'Leaves use sunlight to make food for the plant.',
-        Flower: 'Which insects visit flowers?',
-        Seed: 'What grows from a seed?',
-        Fruit: 'Fruit holds the seeds. Can you find seeds in an apple?',
-      },
+    cards: withExplanations(
+      withPrompts(
+        [
+          ...pictureCards(
+            [
+              { name: 'Roots', image: plantImage('roots') },
+              { name: 'Stem', image: plantImage('stem') },
+              { name: 'Leaves', image: plantImage('leaves') },
+              { name: 'Flower', image: plantImage('flower') },
+            ],
+            '#e0f2fe',
+          ),
+          ...textCards([
+            ['🌰', 'Seed'],
+            ['🍎', 'Fruit'],
+          ]),
+        ],
+        {
+          Roots: 'Roots drink water from the soil. Where are they?',
+          Stem: 'The stem carries water up the plant.',
+          Leaves: 'Leaves use sunlight to make food for the plant.',
+          Flower: 'Which insects visit flowers?',
+          Seed: 'What grows from a seed?',
+          Fruit: 'Fruit holds the seeds. Can you find seeds in an apple?',
+        },
+      ),
+      PLANT_PART_EXPLANATIONS,
     ),
   },
   {
@@ -1266,25 +1385,28 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'science',
     minAge: 5,
     description: 'Brain, heart, lungs, bones and more: what is inside us.',
-    cards: withPrompts(
-      textCards([
-        ['🧠', 'Brain'],
-        ['🫀', 'Heart'],
-        ['🫁', 'Lungs'],
-        ['🦴', 'Bones'],
-        ['🦷', 'Teeth'],
-        ['💪', 'Muscles'],
-        ['🩸', 'Blood'],
-      ]),
-      {
-        Brain: 'Your brain helps you think. What are you thinking about?',
-        Heart: 'Put your hand on your chest. Can you feel your heart beat?',
-        Lungs: 'Take a big breath. Can you feel your lungs fill up?',
-        Bones: 'Bones hold you up. Can you feel the bones in your hand?',
-        Teeth: 'How do we keep our teeth strong?',
-        Muscles: 'Muscles help you move. Can you make a muscle?',
-        Blood: 'Your heart pumps blood all around your body.',
-      },
+    cards: withExplanations(
+      withPrompts(
+        mixedCards([
+          { name: 'Brain', emoji: '🧠' },
+          { name: 'Heart', image: heartImage(), replaces: '🫀' },
+          { name: 'Lungs', image: lungsImage(), replaces: '🫁' },
+          { name: 'Bones', emoji: '🦴' },
+          { name: 'Teeth', emoji: '🦷' },
+          { name: 'Muscles', emoji: '💪' },
+          { name: 'Blood', emoji: '🩸' },
+        ]),
+        {
+          Brain: 'Your brain helps you think. What are you thinking about?',
+          Heart: 'Put your hand on your chest. Can you feel your heart beat?',
+          Lungs: 'Take a big breath. Can you feel your lungs fill up?',
+          Bones: 'Bones hold you up. Can you feel the bones in your hand?',
+          Teeth: 'How do we keep our teeth strong?',
+          Muscles: 'Muscles help you move. Can you make a muscle?',
+          Blood: 'Your heart pumps blood all around your body.',
+        },
+      ),
+      BODY_EXPLANATIONS,
     ),
   },
 
@@ -1303,7 +1425,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 5,
     description: 'Cube, sphere, cylinder, cone, pyramid and prisms.',
-    cards: shapeCards(),
+    cards: withExplanations(shapeCards(), SHAPE_EXPLANATIONS),
   },
   {
     id: 'doubles',
@@ -1311,7 +1433,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 5,
     description: 'Adding a number to itself, from 1 + 1 to 10 + 10.',
-    cards: textCards(doubles),
+    cards: factCards(doubles),
   },
   {
     id: 'take-away',
@@ -1319,7 +1441,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 5,
     description: 'Subtracting within 10.',
-    cards: textCards(takeAway),
+    cards: factCards(takeAway),
   },
   {
     id: 'make-ten',
@@ -1327,7 +1449,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 6,
     description: 'What goes with each number to make 10?',
-    cards: textCards(makeTen),
+    cards: factCards(makeTen),
   },
   {
     id: 'skip-counting',
@@ -1335,7 +1457,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 6,
     description: 'Count on by 2s, 3s, 5s and 10s: what comes next?',
-    cards: textCards(skipCounting),
+    cards: factCards(skipCounting),
   },
   {
     id: 'telling-time',
@@ -1351,7 +1473,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 7,
     description: '2 × 1 up to 2 × 10.',
-    cards: textCards(timesTable(2)),
+    cards: factCards(timesTable(2)),
   },
   {
     id: 'times-5',
@@ -1359,7 +1481,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 7,
     description: '5 × 1 up to 5 × 10.',
-    cards: textCards(timesTable(5)),
+    cards: factCards(timesTable(5)),
   },
   {
     id: 'times-10',
@@ -1367,7 +1489,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'math',
     minAge: 7,
     description: '10 × 1 up to 10 × 10.',
-    cards: textCards(timesTable(10)),
+    cards: factCards(timesTable(10)),
   },
   {
     id: 'fractions',
@@ -1404,7 +1526,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'reading',
     minAge: 5,
     description: 'Monday to Sunday, from their short names.',
-    cards: calendarCards(DAYS, 'day', '#e0f2fe'),
+    cards: calendarCards(DAYS, 'day', '#e0f2fe', DAY_EXPLANATIONS),
   },
   {
     id: 'months',
@@ -1412,7 +1534,7 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'reading',
     minAge: 6,
     description: 'January to December, from their short names.',
-    cards: calendarCards(MONTHS, 'month', '#fce7f3'),
+    cards: calendarCards(MONTHS, 'month', '#fce7f3', MONTH_EXPLANATIONS),
   },
   {
     id: 'opposites',
@@ -1649,9 +1771,12 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'world',
     minAge: 5,
     description: 'Seventeen flags, from Japan and Brazil to Canada and India.',
-    cards: pictureCards(
-      FLAGS.map((flag) => ({ name: flag.name, image: flagImage(flag) })),
-      '#f1f5f9',
+    cards: withExplanations(
+      pictureCards(
+        FLAGS.map((flag) => ({ name: flag.name, image: flagImage(flag) })),
+        '#f1f5f9',
+      ),
+      FLAG_EXPLANATIONS,
     ),
   },
 
@@ -1662,20 +1787,23 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'computers',
     minAge: 4,
     description: 'Keyboard, mouse, screen and the other parts of computers.',
-    cards: textCards([
-      ['🖥️', 'Computer'],
-      ['💻', 'Laptop'],
-      ['⌨️', 'Keyboard'],
-      ['🖱️', 'Mouse'],
-      ['🖨️', 'Printer'],
-      ['📱', 'Phone'],
-      ['🎧', 'Headphones'],
-      ['🎤', 'Microphone'],
-      ['📷', 'Camera'],
-      ['🔋', 'Battery'],
-      ['🔌', 'Plug'],
-      ['🕹️', 'Joystick'],
-    ]),
+    cards: withExplanations(
+      textCards([
+        ['🖥️', 'Computer'],
+        ['💻', 'Laptop'],
+        ['⌨️', 'Keyboard'],
+        ['🖱️', 'Mouse'],
+        ['🖨️', 'Printer'],
+        ['📱', 'Phone'],
+        ['🎧', 'Headphones'],
+        ['🎤', 'Microphone'],
+        ['📷', 'Camera'],
+        ['🔋', 'Battery'],
+        ['🔌', 'Plug'],
+        ['🕹️', 'Joystick'],
+      ]),
+      COMPUTER_PART_EXPLANATIONS,
+    ),
   },
   {
     id: 'coding-words',
@@ -1683,20 +1811,23 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'computers',
     minAge: 6,
     description: 'Words from beginner coding lessons, each with a picture to remember it by.',
-    cards: textCards([
-      ['📋', 'Algorithm'],
-      ['👣', 'Sequence'],
-      ['🔁', 'Loop'],
-      ['🚦', 'Condition'],
-      ['📦', 'Variable'],
-      ['👆', 'Event'],
-      ['⌨️', 'Input'],
-      ['🖨️', 'Output'],
-      ['🐛', 'Bug'],
-      ['🔧', 'Debug'],
-      ['📜', 'Program'],
-      ['🤖', 'Robot'],
-    ]),
+    cards: withExplanations(
+      textCards([
+        ['📋', 'Algorithm'],
+        ['👣', 'Sequence'],
+        ['🔁', 'Loop'],
+        ['🚦', 'Condition'],
+        ['📦', 'Variable'],
+        ['👆', 'Event'],
+        ['⌨️', 'Input'],
+        ['🖨️', 'Output'],
+        ['🐛', 'Bug'],
+        ['🔧', 'Debug'],
+        ['📜', 'Program'],
+        ['🤖', 'Robot'],
+      ]),
+      CODING_EXPLANATIONS,
+    ),
   },
   {
     id: 'binary',
@@ -1704,7 +1835,25 @@ export const LIBRARY_SETS: LibrarySet[] = [
     subject: 'computers',
     minAge: 8,
     description: 'How computers count: 0000 to 1111 in binary is 0 to 15.',
-    cards: textCards(binary, { background: '#e0e7ff' }),
+    cards: factCards(binary, { background: '#e0e7ff' }),
+  },
+  {
+    id: 'logic-gates',
+    name: 'Logic gates',
+    subject: 'computers',
+    minAge: 8,
+    description: 'AND, OR, NOT and the other gates computers are built from, drawn as their circuit symbols.',
+    about: LOGIC_GATES_ABOUT,
+    cards: logicGateCards(),
+  },
+  {
+    id: 'logic-gate-puzzles',
+    name: 'Logic gate puzzles',
+    subject: 'computers',
+    minAge: 8,
+    description: 'A gate with its inputs filled in: does a 1 or a 0 come out?',
+    about: LOGIC_PUZZLES_ABOUT,
+    cards: logicPuzzleCards(),
   },
 
   // Music and sports
@@ -1747,3 +1896,12 @@ export const LIBRARY_SETS: LibrarySet[] = [
     ]),
   },
 ];
+
+/** Adds "How this set works" introductions to sets, by set id. */
+function withAbout(sets: LibrarySet[], about: Record<string, string>): LibrarySet[] {
+  const unknown = Object.keys(about).filter((id) => !sets.some((entry) => entry.id === id));
+  if (unknown.length > 0) throw new Error(`Introductions for sets that don't exist: ${unknown.join(', ')}`);
+  return sets.map((entry) => (about[entry.id] ? { ...entry, about: about[entry.id] } : entry));
+}
+
+export const LIBRARY_SETS = withAbout(SETS, SET_ABOUT);

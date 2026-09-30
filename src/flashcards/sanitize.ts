@@ -65,6 +65,7 @@ export function readCard(value: unknown): FlashcardData | null {
     audioUrl: readDataUrl(value.audioUrl, 'audio'),
     lang: readLang(value.lang),
     prompt: readText(value.prompt, 200)?.trim() || undefined,
+    explain: readText(value.explain, 1000)?.trim() || undefined,
     setIds: readIds(value.setIds),
     backgroundColor: readColor(value.backgroundColor),
     review: readReview(value.review),
@@ -75,7 +76,8 @@ export function readSet(value: unknown): FlashcardSet | null {
   if (!isRecord(value)) return null;
   const id = readText(value.id, 100);
   const name = readText(value.name, 100)?.trim();
-  return id && name ? { id, name } : null;
+  const about = readText(value.about, 1000)?.trim() || undefined;
+  return id && name ? { id, name, about } : null;
 }
 
 export const readList = <T>(value: unknown, read: (item: unknown) => T | null) =>

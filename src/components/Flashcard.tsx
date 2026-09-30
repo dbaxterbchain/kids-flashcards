@@ -1,5 +1,6 @@
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import MicIcon from '@mui/icons-material/Mic';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Card, IconButton, Stack, styled } from '@mui/material';
@@ -23,6 +24,8 @@ type FlashcardProps = {
   speakOnFlip?: boolean;
   /** Shows a "Say it" button on the back, for the child to practice saying the word. */
   onSayIt?: () => void;
+  /** Shows a "How it works" button on the back of cards that have an explanation. */
+  onExplain?: () => void;
   className?: string;
 };
 
@@ -36,6 +39,7 @@ export function Flashcard({
   onFlipChange,
   speakOnFlip = false,
   onSayIt,
+  onExplain,
   className,
 }: FlashcardProps) {
   useFontsVersion();
@@ -97,6 +101,19 @@ export function Flashcard({
               aria-label={`Hear ${card.name}`}
             >
               <VolumeUpIcon />
+            </IconButton>
+          )}
+          {!disableFlip && onExplain && card.explain && (
+            <IconButton
+              className="flashcard-explain"
+              tabIndex={isFlipped ? 0 : -1}
+              onClick={(event) => {
+                event.stopPropagation();
+                onExplain();
+              }}
+              aria-label={`How ${card.name} works`}
+            >
+              <LightbulbIcon />
             </IconButton>
           )}
           {!disableFlip && onSayIt && (
@@ -161,7 +178,12 @@ const StyledCard = styled(Card)(({ theme }) => ({
     background: 'transparent',
   },
   // A light backing keeps the buttons visible on dark or busy card fronts.
-  '.flashcard-actions .MuiIconButton-root, .flashcard-speak.MuiIconButton-root, .flashcard-say-it.MuiIconButton-root': {
+  [[
+    '.flashcard-actions .MuiIconButton-root',
+    '.flashcard-speak.MuiIconButton-root',
+    '.flashcard-say-it.MuiIconButton-root',
+    '.flashcard-explain.MuiIconButton-root',
+  ].join(', ')]: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     boxShadow: theme.shadows[1],
     '&:hover': {

@@ -93,6 +93,13 @@
   bottom: 10px;
 }
 
+.flashcard-back .flashcard-explain {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: #b45309;
+}
+
 .flashcard-back .flashcard-say-it {
   position: absolute;
   left: 10px;

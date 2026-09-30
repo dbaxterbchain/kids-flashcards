@@ -2,6 +2,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { Alert, Box, Button, Container, Snackbar, Stack, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { unlockAudio } from './audio/sound';
+import { warmUpVoices } from './audio/voices';
 import { AppHeader } from './components/AppHeader';
 import { CardEditor } from './components/CardEditor';
 import { ChildDialog } from './components/ChildDialog';
@@ -21,7 +22,7 @@ import { buildOddOneOut, distinctCards, GameKind, oddOneOutBelonging } from './f
 import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcards/backup';
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { recordRound } from './flashcards/difficulty';
-import { LibrarySet, prepareLibrarySet } from './flashcards/library';
+import { LibrarySet, LibraryUpdate, prepareLibrarySet } from './flashcards/library';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
 import { BackupError } from './flashcards/backup';
@@ -216,6 +217,10 @@ export default function App() {
   const defaultAvatar =
     AVATARS.find((avatar) => !profiles.some((profile) => profile.avatar === avatar.emoji))?.emoji ?? AVATARS[0].emoji;
 
+  // Some browsers list their voices a moment after the page loads; asking now means cards in other
+  // languages get the right voice from the first tap.
+  useEffect(() => warmUpVoices(), []);
+
   // Leaving the practice screen (including with the back button) ends the round.
   useEffect(() => {
     if (route.name !== 'practice') setRound(null);
@@ -293,7 +298,7 @@ export default function App() {
   };
 
   const handleShareSet = (set: FlashcardSet) =>
-    saveSetFile(createSetPackage(set.name, sortedCards.filter((card) => isInSet(card, set.id))));
+    saveSetFile(createSetPackage(set.name, sortedCards.filter((card) => isInSet(card, set.id)), set.about));
 
   const handleImportSet = (pkg: SetPackage) => library.importSet(pkg);
 
@@ -301,6 +306,11 @@ export default function App() {
     const { set, cards: setCards } = prepareLibrarySet(entry, sets, cards);
     await library.addSetWithCards(set, setCards);
     setHiddenSetIds((current) => current.filter((id) => id !== set.id));
+  };
+
+  // Fills in what's new in the library for sets added from it before, keeping a family's own changes.
+  const handleUpdateLibrarySets = async (updates: LibraryUpdate[]) => {
+    for (const update of updates) await library.addSetWithCards(update.set, update.cards);
   };
 
   const toggleSetHidden = (setId: string) => {
@@ -467,12 +477,13 @@ export default function App() {
           onEditCard={(card) => openCardEditor(card)}
           onDeleteCard={handleDeleteCard}
           onCreateSet={library.createSet}
-          onRenameSet={library.renameSet}
+          onUpdateSet={library.updateSet}
           onDeleteSet={handleDeleteSet}
           onToggleSetHidden={toggleSetHidden}
           onShareSet={handleShareSet}
           onImportSet={handleImportSet}
           onAddLibrarySet={handleAddLibrarySet}
+          onUpdateLibrarySets={handleUpdateLibrarySets}
           incomingSet={incomingSet}
           onIncomingSetHandled={clearIncomingSet}
           onAddChild={openAddChild}
@@ -492,6 +503,7 @@ export default function App() {
     screen = (
       <PlaySetView
         title={openTile.name}
+        about={sets.find((set) => set.id === openTile.id)?.about}
         cards={openTile.cards}
         speakOnFlip={speakOnFlip}
         practiceProfile={progressReady ? activeProfile : null}

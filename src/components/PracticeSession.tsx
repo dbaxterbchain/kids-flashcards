@@ -2,6 +2,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import ReplayIcon from '@mui/icons-material/Replay';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@mui/material';
@@ -13,6 +14,7 @@ import { ChildProfile, DifficultyChange, FlashcardData, Sticker } from '../flash
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
+import { Explanation, ExplainDialog } from './ExplainDialog';
 import { Flashcard } from './Flashcard';
 import { StickerBadge } from './StickerBook';
 import './PracticeSession.css';
@@ -70,6 +72,7 @@ export function PracticeSession({
   const [solved, setSolved] = useState(false);
   const [results, setResults] = useState<Record<string, boolean>>({});
   const [complete, setComplete] = useState(false);
+  const [explanation, setExplanation] = useState<Explanation | null>(null);
   const nextButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const introCard = complete ? null : newCards[introIndex] ?? null;
@@ -268,9 +271,14 @@ export function PracticeSession({
           <p className="practice-intro__word" style={fitStyle(introCard.name, 800)} lang={introCard.lang}>
             {introCard.name}
           </p>
-          <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(introCard)}>
-            Hear it again
-          </Button>
+          <Stack direction="row" flexWrap="wrap" justifyContent="center" columnGap={1}>
+            <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(introCard)}>
+              Hear it again
+            </Button>
+            {introCard.explain && (
+              <ExplainButton onClick={() => setExplanation({ card: introCard, text: introCard.explain ?? '' })} />
+            )}
+          </Stack>
           <Button
             variant="contained"
             size="large"
@@ -286,6 +294,7 @@ export function PracticeSession({
             {error}
           </Typography>
         )}
+        <ExplainDialog explanation={explanation} onClose={() => setExplanation(null)} />
       </Box>
     );
   }
@@ -328,9 +337,15 @@ export function PracticeSession({
               />
             </Box>
             {(side === 'find-picture' || solved) && (
-              <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(card)}>
-                {side === 'find-picture' ? 'Hear it again' : 'Hear it'}
-              </Button>
+              <Stack direction="row" flexWrap="wrap" justifyContent="center" columnGap={1}>
+                <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(card)}>
+                  {side === 'find-picture' ? 'Hear it again' : 'Hear it'}
+                </Button>
+                {/* Explaining before it's found would give the answer away. */}
+                {solved && card.explain && (
+                  <ExplainButton onClick={() => setExplanation({ card, text: card.explain ?? '' })} />
+                )}
+              </Stack>
             )}
           </Stack>
 
@@ -414,6 +429,13 @@ export function PracticeSession({
           {error}
         </Typography>
       )}
+      <ExplainDialog explanation={explanation} onClose={() => setExplanation(null)} />
     </Box>
   );
 }
+
+const ExplainButton = ({ onClick }: { onClick: () => void }) => (
+  <Button variant="text" color="warning" startIcon={<LightbulbIcon />} onClick={onClick}>
+    How it works
+  </Button>
+);

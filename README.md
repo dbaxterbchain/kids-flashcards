@@ -4,13 +4,15 @@ A kid-friendly React + TypeScript web app for building, flipping, and hearing pe
 
 ## Features
 - Create, edit, and delete cards with a photo (taken in the app or chosen from your library, and shrunk automatically), a solid color, or text such as "2 + 3" on the front.
-- Optional audio on each card (record in-app or upload). It plays when the card flips; cards without a recording are read aloud by the device's voice (this can be switched off), in the card's own language when one is chosen (for example Spanish or French).
-- A set library with 61 ready-made sets for ages 2 and up: animals and animal sounds, everyday words, feelings, community helpers, science (weather, seasons, life cycles, parts of a plant, the human body, space, the planets, solid/liquid/gas, element symbols), math (teen numbers, 3D shapes, addition and subtraction, skip counting, telling time, times tables, fractions), reading (letters, first letters, opposites, sight words, days and months), Spanish and French words, flags of the world, computers (parts, coding words, binary), instruments and sports. Many cards come with talk-about-it questions.
+- Optional audio on each card (record in-app or upload). It plays when the card flips; cards without a recording are read aloud by the device's voice (this can be switched off), in the card's own language when one is chosen (for example Spanish or French). Grown-ups can hear and pick the voice for each language, and are told when a device has no voice for one.
+- A set library with 63 ready-made sets for ages 2 and up: animals and animal sounds, everyday words, feelings, community helpers, science (weather, seasons, life cycles, parts of a plant, the human body, space, the planets, solid/liquid/gas, element symbols), math (teen numbers, 3D shapes, addition and subtraction, skip counting, telling time, times tables, fractions), reading (letters, first letters, opposites, sight words, days and months), Spanish and French words, flags of the world, computers (parts, coding words, binary, logic gates and logic gate puzzles), instruments and sports. Many cards come with talk-about-it questions, and the trickier sets explain how every card works.
 - Optional talk-about-it questions on cards ("What sound does a dog make?"), shown on the back of the card and after a right answer.
+- "How it works" explanations for tricky ideas: a light bulb on the back of a card (and after a right answer in practice) opens a longer explanation to read together or have read aloud, like how 1011 adds up to 11 in binary, or an XOR gate's truth table. Sets can have a "How this set works" introduction too.
+- Sets added from the library pick up what's been added to it since (explanations, questions, and drawings for emoji older devices can't show) in one tap, without changing a family's own edits.
 - Share any set as a single file (pictures, recordings, colors, and languages included) and import sets others share, with a preview first. Installed on Android, the app appears in the share sheet for set files; on computers, set files can be opened with it.
 - Print any set as two-sided flashcards, six to a page, with cut lines.
 - A kid-friendly Play mode: big set tiles, two cards per row on phones, and the word said aloud when a card flips.
-- A Grown-ups area behind a simple parent gate (a multiplication question) for adding, editing, and deleting cards, managing sets (rename, delete, hide from kids), and setting up each child. Deleting a card can be undone.
+- A Grown-ups area behind a simple parent gate (a multiplication question) for adding, editing, and deleting cards, managing sets (rename, add a "How this set works" introduction, delete, hide from kids), and setting up each child. Deleting a card can be undone.
 - Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
 - Practice for each child: a profile per child (name, an emoji avatar from themed groups or a photo, age-based settings) with separate spaced-repetition progress.
 - Audio-first practice game for pre-readers: words are read aloud (your recording, or the device's voice), wrong taps get another try, and rounds end with a celebration.
@@ -65,10 +67,11 @@ GitHub Actions runs lint, the unit tests, the build, and the browser tests on ev
 2. Kids tap a set, then tap cards to flip them (Space/Enter works too).
 3. Grown-ups tap the lock button and answer the question to open the Grown-ups area.
 4. Under **Cards**, click **New card**: choose the front (a photo, a color, or text), type the word for the back, optionally record your voice saying it (up to 10s), and pick its sets.
-5. Under **Sets**, open the **Set library** to add ready-made sets, **Import a set** someone shared with you, share a set with the share button, or rename, delete, or hide a set from kids. Deleting a set can also delete the cards that are only in it.
+5. Under **Sets**, open the **Set library** to add ready-made sets, **Import a set** someone shared with you, share a set with the share button, or edit (name and "How this set works"), delete, or hide a set from kids. Deleting a set can also delete the cards that are only in it.
 6. Under **Children**, add each child and choose their question type, number of choices, round length, and sets. **Progress** shows how each child is doing.
 7. Back in Play mode, pick who's practicing and press **Start**, or open a set and press **Practice** to practice just that set, or play one of its games.
 8. To print a set, open its menu under **Sets** and choose **Print**.
+9. Under **Settings**, **Voices** lets you hear and pick the voice that reads each language your cards use.
 
 ## Project Structure
 ```
@@ -92,7 +95,8 @@ public/
 - Because everything stays on the device, clearing site data or losing the device loses it. Grown-ups › Settings › **Save a backup** writes a JSON file (shared via the share sheet on phones and tablets, downloaded elsewhere), and **Restore from a backup** replaces everything on the device with a backup's contents.
 - A shared set is a smaller JSON file with one set's cards and no children or progress. Importing one always adds a new set and never changes existing cards.
 - Backups and set files are checked when opened: only embedded pictures and recordings (never links), plain colors, language tags, and known fields are kept.
-- The set library's pictures are emoji and small generated drawings, so the library is a small download that's only loaded when a grown-up opens it (and is cached for offline use).
+- The set library's pictures are emoji and small generated drawings, so the library is a small download that's only loaded when a grown-up opens it (and is cached for offline use). Its emoji are all from Emoji 12.0 (2019) or earlier, so Windows 10 and older phones show them; a unit test keeps it that way.
+- Choices of voice are kept on the device (voices differ from device to device), not in backups.
 
 ## Roadmap
 See [ROADMAP.md](ROADMAP.md) for what's been done and ideas for later.

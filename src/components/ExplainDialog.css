@@ -1,0 +1,76 @@
+.explain__header {
+  position: relative;
+  padding: 16px 56px 12px 24px;
+  /* Lets the card's word scale to the space beside the picture. */
+  container-type: inline-size;
+}
+
+@media (max-width: 599px) {
+  .explain__header {
+    padding-left: 16px;
+  }
+}
+
+.explain__heading.MuiTypography-root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-weight: 800;
+}
+
+.explain__bulb.MuiSvgIcon-root {
+  color: #d97706;
+}
+
+.explain__card {
+  position: relative;
+  flex-shrink: 0;
+  width: min(40%, 150px);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+.explain__word {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
+  min-width: 0;
+  margin: 0;
+  color: #0f172a;
+  /* The word shares the row with a picture that's at most 40% wide. */
+  font-size: max(1rem, min(1.75rem, calc(50cqi / var(--fit-em, 1))));
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.explain__set-name {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.explain__text .MuiTypography-root {
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+/* Equations and truth tables, one per line and lined up. */
+.explain__equations {
+  display: grid;
+  justify-self: start;
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #1e1b4b;
+  font-size: clamp(1.05rem, 4.5vw, 1.2rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}

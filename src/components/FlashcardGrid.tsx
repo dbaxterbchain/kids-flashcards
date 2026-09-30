@@ -10,6 +10,8 @@ type FlashcardGridProps = {
   onDelete?: (card: FlashcardData) => void;
   /** Adds a "Say it" button to each card's back. */
   onSayIt?: (card: FlashcardData) => void;
+  /** Adds a "How it works" button to the back of cards that have an explanation. */
+  onExplain?: (card: FlashcardData) => void;
 };
 
 export function FlashcardGrid({
@@ -19,6 +21,7 @@ export function FlashcardGrid({
   onEdit,
   onDelete,
   onSayIt,
+  onExplain,
 }: FlashcardGridProps) {
   return (
     <Box
@@ -39,6 +42,7 @@ export function FlashcardGrid({
           onEdit={onEdit && (() => onEdit(card))}
           onDelete={onDelete && (() => onDelete(card))}
           onSayIt={onSayIt && (() => onSayIt(card))}
+          onExplain={onExplain && (() => onExplain(card))}
         />
       ))}
     </Box>

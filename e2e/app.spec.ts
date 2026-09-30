@@ -79,13 +79,90 @@ test('grown-ups can add a set from the library', async ({ page }) => {
   await page.getByRole('button', { name: 'Set library' }).click();
   const library = page.getByRole('dialog');
   await library.getByRole('button', { name: /^The planets:/ }).click();
-  await expect(library.getByText('Saturn')).toBeVisible();
+  await expect(library.getByText('Saturn', { exact: true })).toBeVisible();
   await library.getByRole('button', { name: 'Add The planets' }).click();
   await expect(library.getByRole('button', { name: 'The planets added' })).toBeVisible();
   await library.getByRole('button', { name: 'Close the library' }).click();
   await page.getByRole('button', { name: 'Done' }).click();
   await setTile(page, 'The planets').click();
   await expect(page.getByRole('button', { name: 'Flashcard for Jupiter' })).toBeVisible();
+});
+
+test('grown-ups can pick the voice for a language, and hear when one is missing', async ({ page }) => {
+  // Voices like Chrome's on a Windows computer, with no French voice. Speech is recorded, not played.
+  await page.addInitScript(() => {
+    const voice = (name: string, lang: string, isDefault = false) => ({ name, lang, voiceURI: name, localService: isDefault, default: isDefault });
+    const voices = [voice('Microsoft David', 'en-US', true), voice('Google español', 'es-ES'), voice('Google español de Estados Unidos', 'es-US')];
+    const spoken: { text: string; lang: string; voice: string | null }[] = [];
+    Object.assign(window, { spoken });
+    Object.assign(window, {
+      SpeechSynthesisUtterance: class {
+        text: string;
+        lang = '';
+        voice: { name: string } | null = null;
+        rate = 1;
+        constructor(text: string) {
+          this.text = text;
+        }
+      },
+    });
+    Object.assign(window.speechSynthesis, {
+      getVoices: () => voices,
+      speak: (utterance: { text: string; lang: string; voice: { name: string } | null }) =>
+        spoken.push({ text: utterance.text, lang: utterance.lang, voice: utterance.voice?.name ?? null }),
+      cancel: () => undefined,
+    });
+  });
+  await page.reload();
+
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Sets' }).click();
+  await page.getByRole('button', { name: 'Set library' }).click();
+  const library = page.getByRole('dialog');
+  await library.getByRole('button', { name: /^French: animals:/ }).click();
+  await expect(library.getByText(/This device has no French voice/)).toBeVisible();
+  await library.getByRole('button', { name: 'Add French: animals' }).click();
+  await library.getByRole('button', { name: 'Back to the library' }).click();
+  await library.getByRole('button', { name: 'Add Spanish: animals' }).click();
+  await expect(library.getByRole('button', { name: 'Spanish: animals added' })).toBeVisible();
+  await library.getByRole('button', { name: 'Close the library' }).click();
+  await expect(page.getByText('No French voice on this device. See Settings.')).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  const spanish = page.getByRole('combobox', { name: 'Spanish (Latin America)' });
+  await expect(spanish).toHaveText('Automatic: Google español de Estados Unidos (needs the internet)');
+  await spanish.click();
+  await page.getByRole('option', { name: 'Google español (needs the internet)' }).click();
+  await page.getByRole('button', { name: 'Hear the Spanish (Latin America) voice' }).click();
+  const spoken = await page.evaluate(() => (window as unknown as { spoken: unknown[] }).spoken.at(-1));
+  expect(spoken).toEqual({ text: 'el perro', lang: 'es-MX', voice: 'Google español' });
+});
+
+test('tricky cards explain how they work', async ({ page }) => {
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Sets' }).click();
+  await page.getByRole('button', { name: 'Set library' }).click();
+  const library = page.getByRole('dialog');
+  await library.getByRole('button', { name: 'Add Logic gates' }).click();
+  await expect(library.getByRole('button', { name: 'Logic gates added' })).toBeVisible();
+  await library.getByRole('button', { name: 'Close the library' }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  await setTile(page, 'Logic gates').click();
+  await page.getByRole('button', { name: 'How this set works' }).click();
+  const about = page.getByRole('dialog', { name: 'How this set works' });
+  await expect(about.getByText(/Inside every computer are billions of tiny switches/)).toBeVisible();
+  await about.getByRole('button', { name: 'Got it' }).click();
+  await expect(about).toHaveCount(0);
+
+  const card = page.getByRole('button', { name: 'Flashcard for XOR gate' });
+  await card.click();
+  await card.getByRole('button', { name: 'How XOR gate works' }).click();
+  const explanation = page.getByRole('dialog', { name: 'How it works' });
+  await expect(explanation.getByText('XOR gate', { exact: true })).toBeVisible();
+  await expect(explanation.locator('.explain__equations')).toHaveText(/0 XOR 0 = 0\s*0 XOR 1 = 1\s*1 XOR 0 = 1\s*1 XOR 1 = 0/);
+  await explanation.getByRole('button', { name: 'Close' }).click();
+  await expect(explanation).toHaveCount(0);
 });
 
 test('a child can practice', async ({ page }) => {

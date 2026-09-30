@@ -112,11 +112,16 @@ export function useCardLibrary() {
     [sets, newSetId, addSetWithCards],
   );
 
-  const renameSet = useCallback(async (id: string, name: string) => {
-    const set = { id, name: name.trim() };
-    await putSet(set);
-    setSets((current) => current.map((existing) => (existing.id === id ? set : existing)));
-  }, []);
+  /** Changes a set's name or its "How this set works" text. */
+  const updateSet = useCallback(
+    async (id: string, changes: { name: string; about?: string }) => {
+      const existing = sets.find((set) => set.id === id);
+      const set: FlashcardSet = { ...existing, id, name: changes.name.trim(), about: changes.about?.trim() || undefined };
+      await putSet(set);
+      setSets((current) => current.map((candidate) => (candidate.id === id ? set : candidate)));
+    },
+    [sets],
+  );
 
   /** Deletes a set. Its cards stay, just without that set, unless the parent chose to delete them too. */
   const removeSet = useCallback(
@@ -161,7 +166,7 @@ export function useCardLibrary() {
     createSet,
     addSetWithCards,
     importSet,
-    renameSet,
+    updateSet,
     removeSet,
     restoreStarters,
     missingStarterCount,
