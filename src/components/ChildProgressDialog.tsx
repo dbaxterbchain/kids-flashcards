@@ -19,6 +19,7 @@ import { getProgress } from '../db/progressDb';
 import { filterCardsForSets } from '../flashcards/practice';
 import { CARD_STATUSES, CardStatus, lastPracticedAt, ProgressSummary, summarizeProgress } from '../flashcards/progressSummary';
 import { ProgressByCard } from '../flashcards/review';
+import { fitStyle } from '../flashcards/textFit';
 import { ChildProfile, FlashcardData, FlashcardSet } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
@@ -186,7 +187,12 @@ export function ChildProgressDialog({ profile, cards, sets, onClose }: ChildProg
                   <div className="progress-cards__front">
                     <CardFront card={card} alt="" />
                   </div>
-                  <Typography component="figcaption" variant="body2" sx={{ fontWeight: 700 }}>
+                  <Typography
+                    component="figcaption"
+                    variant="body2"
+                    style={fitStyle(card.name)}
+                    sx={{ fontWeight: 700, fontSize: 'min(0.875rem, calc(100cqi / var(--fit-em, 1)))' }}
+                  >
                     {card.name}
                   </Typography>
                 </Box>

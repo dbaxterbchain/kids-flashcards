@@ -47,7 +47,23 @@ export function PlaySetView({
         >
           <ArrowBackIcon />
         </IconButton>
-        <Typography id="set-heading" variant="h5" component="h1" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
+        <Typography
+          id="set-heading"
+          variant="h5"
+          component="h1"
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            fontWeight: 800,
+            lineHeight: 1.15,
+            fontSize: { xs: '1.3rem', sm: '1.5rem' },
+            // Long names wrap to a second line instead of being cut off.
+            display: '-webkit-box',
+            overflow: 'hidden',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+          }}
+        >
           {title}
         </Typography>
         {practiceProfile && cards.length >= 2 && (

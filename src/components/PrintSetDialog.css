@@ -21,6 +21,7 @@
 }
 
 .print-card--back {
+  container-type: size;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -31,9 +32,11 @@
 }
 
 .print-card__word {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   margin: 0;
   color: #0f172a;
-  font-size: 30pt;
+  font-size: min(30pt, calc(92cqi / var(--fit-em, 1)));
   font-weight: 800;
   line-height: 1.1;
   overflow-wrap: anywhere;

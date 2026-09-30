@@ -13,6 +13,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Words need bigger tiles than pictures, so phones get three to a row. */
+@media (max-width: 599px) {
+  .memory-grid--words {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* Scoped under .memory-grid so these win over MUI's ButtonBase reset. */
 .memory-grid .memory-tile {
   position: relative;
@@ -61,6 +68,7 @@
   transform: rotateY(180deg);
   border: 4px solid #c7d2fe;
   background: #ffffff;
+  container-type: size;
 }
 
 .memory-tile.is-matched .memory-tile__front {
@@ -69,12 +77,15 @@
 }
 
 .memory-tile__word {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   display: grid;
   place-items: center;
   height: 100%;
   padding: 6px;
   color: #0f172a;
-  font-size: clamp(0.95rem, 4.5vw, 1.5rem);
+  /* Small tiles: the widest word still fits on one line (the tile minus its padding). */
+  font-size: max(0.6rem, min(clamp(0.95rem, 4.5vw, 1.5rem), calc((100cqi - 14px) / var(--fit-em, 1))));
   font-weight: 800;
   line-height: 1.1;
   text-align: center;

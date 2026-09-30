@@ -7,6 +7,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Box, Button, ButtonBase, Dialog, IconButton, Stack, Typography } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playRecording, speakCard, stopSpeaking, unlockAudio } from '../audio/sound';
+import { fitStyle } from '../flashcards/textFit';
 import { FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import './SayItDialog.css';
@@ -172,7 +173,7 @@ export function SayItDialog({ card, onClose }: SayItDialogProps) {
   return (
     <Dialog open={Boolean(card)} onClose={close} maxWidth="xs" fullWidth>
       {card && (
-        <Stack spacing={2} alignItems="center" sx={{ p: 3, pt: 2, position: 'relative' }}>
+        <Stack spacing={2} alignItems="center" sx={{ p: 3, pt: 2, position: 'relative', containerType: 'inline-size' }}>
           <IconButton aria-label="Close" onClick={close} sx={{ position: 'absolute', top: 8, right: 8 }}>
             <CloseIcon />
           </IconButton>
@@ -182,7 +183,9 @@ export function SayItDialog({ card, onClose }: SayItDialogProps) {
           <Box className="say-it__card">
             <CardFront card={card} alt="" />
           </Box>
-          <Typography className="say-it__word">{card.name}</Typography>
+          <Typography className="say-it__word" style={fitStyle(card.name, 800)} lang={card.lang}>
+            {card.name}
+          </Typography>
           {action}
           <Typography role="status" sx={{ fontWeight: 700, textAlign: 'center', minHeight: 24 }}>
             {message}

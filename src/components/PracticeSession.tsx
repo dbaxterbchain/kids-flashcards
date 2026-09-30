@@ -8,6 +8,7 @@ import { Box, Button, ButtonBase, Chip, IconButton, Stack, Typography } from '@m
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildOptions, hashString, promptSideFor } from '../flashcards/practice';
+import { fitStyle } from '../flashcards/textFit';
 import { ChildProfile, DifficultyChange, FlashcardData, Sticker } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import { ChildAvatar } from './ChildAvatar';
@@ -264,7 +265,9 @@ export function PracticeSession({
           >
             <CardFront card={introCard} alt="" />
           </ButtonBase>
-          <p className="practice-intro__word">{introCard.name}</p>
+          <p className="practice-intro__word" style={fitStyle(introCard.name, 800)} lang={introCard.lang}>
+            {introCard.name}
+          </p>
           <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(introCard)}>
             Hear it again
           </Button>

@@ -22,6 +22,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { languageLabel } from '../flashcards/languages';
 import { LIBRARY_SUBJECTS, LibrarySet, LibrarySubject, librarySetId, loadLibrary } from '../flashcards/library';
+import { fitStyle } from '../flashcards/textFit';
 import { FlashcardSet } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import './SetLibraryDialog.css';
@@ -142,7 +143,12 @@ export function SetLibraryDialog({ open, sets, onClose, onAdd }: SetLibraryDialo
               <div className="library-cards__front">
                 <CardFront card={card} alt="" />
               </div>
-              <Typography component="figcaption" variant="body2" sx={{ fontWeight: 700 }}>
+              <Typography
+                component="figcaption"
+                variant="body2"
+                style={fitStyle(card.name)}
+                sx={{ fontWeight: 700, fontSize: 'min(0.875rem, calc(100cqi / var(--fit-em, 1)))' }}
+              >
                 {card.name}
               </Typography>
             </Box>

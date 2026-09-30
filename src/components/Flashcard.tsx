@@ -5,6 +5,8 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Card, IconButton, Stack, styled } from '@mui/material';
 import { KeyboardEvent, useState } from 'react';
 import { speakCard } from '../audio/sound';
+import { fitStyle } from '../flashcards/textFit';
+import { useFontsVersion } from '../hooks/useFontsVersion';
 import { FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import './Flashcard.css';
@@ -36,6 +38,7 @@ export function Flashcard({
   onSayIt,
   className,
 }: FlashcardProps) {
+  useFontsVersion();
   const [isFlippedState, setIsFlippedState] = useState(false);
   const isFlipped = isFlippedProp ?? isFlippedState;
 
@@ -78,7 +81,9 @@ export function Flashcard({
         </div>
         <div className={`flashcard-face flashcard-back${card.prompt ? ' flashcard-back--prompt' : ''}`}>
           <div className="flashcard-words">
-            <p className="flashcard-name">{card.name}</p>
+            <p className="flashcard-name" style={fitStyle(card.name)} lang={card.lang}>
+              {card.name}
+            </p>
             {card.prompt && <p className="flashcard-prompt">{card.prompt}</p>}
           </div>
           {!disableFlip && (

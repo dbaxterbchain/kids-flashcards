@@ -8,9 +8,11 @@
 }
 
 .say-it__word.MuiTypography-root {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   margin: 0;
   color: #0f172a;
-  font-size: 2rem;
+  font-size: min(2rem, calc(94cqi / var(--fit-em, 1)));
   font-weight: 800;
   line-height: 1.1;
   text-align: center;

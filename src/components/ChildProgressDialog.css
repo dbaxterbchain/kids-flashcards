@@ -103,6 +103,7 @@
 .progress-cards__card {
   margin: 0;
   text-align: center;
+  container-type: inline-size;
 }
 
 .progress-cards__front {

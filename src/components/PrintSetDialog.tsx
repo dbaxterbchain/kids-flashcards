@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { printSheets, PrintSheet } from '../flashcards/printLayout';
+import { fitStyle } from '../flashcards/textFit';
 import { FlashcardData, FlashcardSet } from '../flashcards/types';
 import { CardFront } from './CardFront';
 import './PrintSetDialog.css';
@@ -37,7 +38,9 @@ function PrintCard({ card, side, withPrompts }: { card: FlashcardData | null; si
     </div>
   ) : (
     <div className="print-card print-card--back">
-      <p className="print-card__word">{card.name}</p>
+      <p className="print-card__word" style={fitStyle(card.name, 800)} lang={card.lang}>
+        {card.name}
+      </p>
       {withPrompts && card.prompt && <p className="print-card__prompt">{card.prompt}</p>}
     </div>
   );

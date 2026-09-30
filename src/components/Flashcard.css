@@ -49,9 +49,12 @@
 }
 
 .flashcard-name {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   margin: 0;
   font-size: 1.8rem;
-  font-size: clamp(1.2rem, 16cqi, 2.6rem);
+  /* As big as the card allows, but never so big that its widest word needs splitting. */
+  font-size: max(0.8rem, min(clamp(1.2rem, 16cqi, 2.6rem), calc(94cqi / var(--fit-em, 1))));
   font-weight: 700;
   line-height: 1.15;
   overflow-wrap: anywhere;

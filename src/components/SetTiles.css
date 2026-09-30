@@ -59,6 +59,7 @@
 }
 
 .set-tile__label {
+  container-type: inline-size;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,10 +68,13 @@
 }
 
 .set-tile__name {
+  /* If a word ever must break (tiny screens), break it at a syllable with a hyphen. */
+  hyphens: auto;
   display: -webkit-box;
   overflow: hidden;
   color: #0f172a;
-  font-size: 1.1rem;
+  /* Shrinks a little on small phones so no word is split (the count badge takes about 56px). */
+  font-size: max(0.8rem, min(1.1rem, calc((100cqi - 56px) / var(--fit-em, 1))));
   font-weight: 800;
   line-height: 1.2;
   overflow-wrap: anywhere;

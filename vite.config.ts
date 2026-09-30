@@ -54,6 +54,21 @@ export default defineConfig(({ mode }) => ({
         importScripts: ['share-target-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,mp3,woff2}'],
         runtimeCaching: [
+          // The app's font (Baloo 2), so text looks and fits the same offline.
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'google-fonts-stylesheets' },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
           {
             urlPattern: ({ request }) => request.destination === 'image',
             handler: 'CacheFirst',

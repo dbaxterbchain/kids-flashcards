@@ -61,6 +61,7 @@
 .library-cards__card {
   margin: 0;
   text-align: center;
+  container-type: inline-size;
 }
 
 .library-cards__front {

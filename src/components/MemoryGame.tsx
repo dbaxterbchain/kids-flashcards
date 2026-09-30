@@ -2,7 +2,9 @@ import { ButtonBase, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildMemoryDeck, GAME_INFO, memoryMatchesWords, memoryPairCount, MemoryTile } from '../flashcards/games';
+import { fitStyle } from '../flashcards/textFit';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
+import { useFontsVersion } from '../hooks/useFontsVersion';
 import { CardFront } from './CardFront';
 import { GameFrame, GameReward, GameSummary } from './GameParts';
 import './Games.css';
@@ -22,6 +24,7 @@ const MISMATCH_MS = 1100;
 
 /** Flip two cards at a time to find the pairs. */
 export function MemoryGame({ title, cards, profile, reward, onFinish, onPlayAgain, onExit }: MemoryGameProps) {
+  useFontsVersion();
   const settings = profile?.settings ?? null;
   const readAloud = settings?.readAloud ?? true;
   const soundEffects = settings?.soundEffects ?? true;
@@ -94,7 +97,7 @@ export function MemoryGame({ title, cards, profile, reward, onFinish, onPlayAgai
       <Typography textAlign="center" color="text.secondary" fontWeight={700}>
         {withWords ? 'Match each picture to its word.' : 'Find the matching pictures.'} {matched.length} of {pairs} found
       </Typography>
-      <div className={`memory-grid memory-grid--${deck.length}`}>
+      <div className={`memory-grid memory-grid--${deck.length}${withWords ? ' memory-grid--words' : ''}`}>
         {deck.map((tile, index) => {
           const card = cardFor(tile);
           const isMatched = matched.includes(tile.cardId);
@@ -114,7 +117,13 @@ export function MemoryGame({ title, cards, profile, reward, onFinish, onPlayAgai
                   ?
                 </span>
                 <span className="memory-tile__face memory-tile__front" aria-hidden>
-                  {tile.face === 'picture' ? <CardFront card={card} alt="" /> : <span className="memory-tile__word">{card.name}</span>}
+                  {tile.face === 'picture' ? (
+                    <CardFront card={card} alt="" />
+                  ) : (
+                    <span className="memory-tile__word" style={fitStyle(card.name, 800)} lang={card.lang}>
+                      {card.name}
+                    </span>
+                  )}
                 </span>
               </span>
             </ButtonBase>
