@@ -33,6 +33,18 @@ export default [
     },
   },
   {
+    // Node scripts, some of which pass functions to run in a browser page.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
+  },
+  {
     files: ['**/*.d.ts'],
     rules: {
       'no-unused-vars': 'off',

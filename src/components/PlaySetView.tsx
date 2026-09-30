@@ -8,6 +8,7 @@ import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { ChildAvatar } from './ChildAvatar';
 import { Explanation, ExplainDialog } from './ExplainDialog';
 import { FlashcardGrid } from './FlashcardGrid';
+import { KeepRangesTogether } from './KeepRangesTogether';
 import { SayItDialog } from './SayItDialog';
 
 type PlaySetViewProps = {
@@ -71,7 +72,7 @@ export function PlaySetView({
             WebkitLineClamp: 2,
           }}
         >
-          {title}
+          <KeepRangesTogether text={title} />
         </Typography>
         {practiceProfile && cards.length >= 2 && (
           <Button

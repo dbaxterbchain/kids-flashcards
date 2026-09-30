@@ -5,6 +5,10 @@ Ideas for making Kids Flashcards more fun and more effective for kids from age 2
 ## Done
 
 ### Most recent
+- **A new look:** a logo of two flashcards with a gold star, used for the favicon, app icons (including ones shaped by each phone's launcher), the header, the offline page and a loading screen.
+- **Search and sharing:** a clear page title and description, link previews with a share image, structured data describing the app, a sitemap and robots.txt, and screenshots in the install dialog.
+
+### Before that
 - **"How it works" explanations:** a light bulb on the back of tricky cards opens a longer explanation to read together, or have read aloud. 27 library sets explain every card (binary, fractions, telling time, element symbols, animal groups, flags, coding words and more), and sets can have a "How this set works" introduction that grown-ups can write for their own sets too.
 - **Logic gates:** a set of the seven gate symbols with their truth tables, and a set of logic gate puzzles (a gate with its inputs filled in: what comes out?).
 - **Library updates:** sets added from the library earlier pick up its new explanations, talk-about-it questions and drawings in one tap, without touching a family's own edits.

@@ -3,19 +3,103 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
-    <title>Kids Flashcards</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Kids Flashcards: free flashcards with your own photos and voice</title>
+    <meta
+      name="description"
+      content="Make flashcards with your own photos and voice, or add from 60+ ready-made sets. Games, stickers and practice for kids 2 and up. Free, private and works offline."
+    />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="application-name" content="Kids Flashcards" />
+    <meta name="apple-mobile-web-app-title" content="Flashcards" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <!-- How the app looks when a link to it is shared. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kids Flashcards" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Kids Flashcards: flashcards with your own photos and voice" />
+    <meta
+      property="og:description"
+      content="Make flashcards with your own photos and voice, or add from 60+ ready-made sets. Games, stickers and practice for kids 2 and up. Free, private and works offline."
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Kids Flashcards logo next to three flashcards: the Earth, the number 3, and Grandma."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kids Flashcards: flashcards with your own photos and voice" />
+    <meta
+      name="twitter:description"
+      content="Make flashcards with your own photos and voice, or add from 60+ ready-made sets. Free, private and works offline."
+    />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <style>
+      body {
+        margin: 0;
+        background: #f4f7ff;
+      }
+      /* Shown while the app loads (and read by search engines); the app replaces it. */
+      .app-splash {
+        display: grid;
+        justify-items: center;
+        gap: 12px;
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 18vh 24px 0;
+        text-align: center;
+        color: #0f172a;
+        font-family: 'Baloo 2', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        animation: app-splash-in 0.3s ease 0.4s both;
+      }
+      .app-splash h1 {
+        margin: 4px 0 0;
+        font-size: 2.2rem;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+      .app-splash p {
+        margin: 0;
+        color: #475569;
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      @keyframes app-splash-in {
+        from {
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app-splash {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="app-splash">
+        <img src="/logo.svg" width="96" height="96" alt="" />
+        <h1>Kids Flashcards</h1>
+        <p>
+          Flashcards made with your own photos and voice, plus ready-made sets, games and stickers for kids 2 and up.
+          Free, private, and works offline.
+        </p>
+        <noscript><p>Kids Flashcards needs JavaScript. Turn it on, or open this page in another browser.</p></noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

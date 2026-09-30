@@ -15,12 +15,18 @@ function measuringContext() {
   return context;
 }
 
-/** The pieces a line may break between: words, and the parts of hyphenated words. */
+/**
+ * The pieces a line may break between: words, and the parts of hyphenated words. Number ranges like
+ * "0-10" stay whole.
+ */
 export const unbreakableParts = (text: string) =>
   text
     .split(/\s+/)
-    .flatMap((word) => word.split(/(?<=-)/))
+    .flatMap((word) => word.split(/(?<=\D-)|(?<=-)(?=\D)/))
     .filter(Boolean);
+
+/** Splits text into plain parts and number ranges ("Numbers 0-10" → "Numbers ", "0-10"). */
+export const splitRanges = (text: string) => text.split(/(\d+(?:-\d+)+)/).filter(Boolean);
 
 // Rough widths in em, for when there's no canvas to measure with (as in unit tests).
 const estimateEm = (part: string) =>
@@ -38,12 +44,16 @@ export function widestPartEm(text: string, weight = 700) {
   return widest;
 }
 
+// Text drawn at a small size can come out a little wider than it measures at 100px, as each letter's
+// width is rounded, so words are given a bit of room to spare.
+const FIT_MARGIN = 1.06;
+
 /**
  * Style for text whose CSS caps its size with `calc(<space> / var(--fit-em))`, so the widest word
  * fits in the space.
  */
 export const fitStyle = (text: string, weight?: number) =>
-  ({ '--fit-em': Math.max(0.5, widestPartEm(text, weight)).toFixed(3) }) as CSSProperties;
+  ({ '--fit-em': Math.max(0.5, widestPartEm(text, weight) * FIT_MARGIN).toFixed(3) }) as CSSProperties;
 
 /** Forgets measurements, e.g. once the app's web font has loaded and text is measured again. */
 export const clearTextFit = () => cache.clear();

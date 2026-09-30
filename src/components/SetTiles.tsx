@@ -3,6 +3,7 @@ import { fitStyle } from '../flashcards/textFit';
 import { FlashcardData } from '../flashcards/types';
 import { useFontsVersion } from '../hooks/useFontsVersion';
 import { CardFront } from './CardFront';
+import { KeepRangesTogether } from './KeepRangesTogether';
 import './SetTiles.css';
 
 export type SetTile = {
@@ -43,7 +44,7 @@ export function SetTiles({ tiles, onOpen }: SetTilesProps) {
             </span>
             <span className="set-tile__label">
               <span className="set-tile__name" style={fitStyle(tile.name, 800)}>
-                {tile.name}
+                <KeepRangesTogether text={tile.name} />
               </span>
               <span className="set-tile__count">{tile.cards.length}</span>
             </span>

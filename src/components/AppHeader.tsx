@@ -44,17 +44,24 @@ export function AppHeader({ onOpenGrownUps }: AppHeaderProps) {
       >
         <Box
           component="img"
-          src="/icons/icon-192.png"
+          src="/logo.svg"
           alt=""
-          // Hidden on phones so the title fits on one line next to the buttons.
-          sx={{ display: { xs: 'none', sm: 'block' }, width: 52, height: 52, borderRadius: 2, flexShrink: 0, boxShadow: 2 }}
+          sx={{
+            width: { xs: 40, sm: 56 },
+            height: { xs: 40, sm: 56 },
+            flexShrink: 0,
+            filter: 'drop-shadow(0 4px 8px rgba(37, 99, 235, 0.25))',
+          }}
         />
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Typography
             variant="h1"
-            sx={{ fontSize: { xs: '1.5rem', sm: '1.85rem' }, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15 }}
+            sx={{ fontSize: { xs: '1.45rem', sm: '1.85rem' }, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15 }}
           >
-            Kids Flashcards
+            <Box component="span" sx={{ color: 'primary.main' }}>
+              Kids
+            </Box>{' '}
+            Flashcards
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Brought to you free by{' '}
