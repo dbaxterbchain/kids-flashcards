@@ -78,6 +78,7 @@ function readSettings(value: unknown): PracticeSettings {
     roundSize: roundSize && roundSize >= 1 ? Math.min(50, Math.round(roundSize)) : defaults.roundSize,
     readAloud: typeof value.readAloud === 'boolean' ? value.readAloud : defaults.readAloud,
     soundEffects: typeof value.soundEffects === 'boolean' ? value.soundEffects : defaults.soundEffects,
+    introduceNew: typeof value.introduceNew === 'boolean' ? value.introduceNew : defaults.introduceNew,
   };
 }
 

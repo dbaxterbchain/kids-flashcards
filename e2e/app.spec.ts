@@ -78,6 +78,18 @@ test('a child can practice', async ({ page }) => {
   await expect(dialog).toBeHidden();
   await practice.getByRole('button', { name: 'Start' }).click();
 
+  // Cards Ivy hasn't met are introduced first.
+  await expect(page.getByText('New card 1 of 2')).toBeVisible();
+  const introduced: string[] = [];
+  for (;;) {
+    introduced.push((await page.locator('.practice-intro__word').innerText()).trim());
+    const next = page.getByRole('button', { name: /^(Next|Let's play!)$/ });
+    const label = await next.innerText();
+    await next.click();
+    if (label.includes("Let's play")) break;
+  }
+  expect(introduced).toHaveLength(2);
+
   // Youngest settings: hear a word, then find its picture.
   const prompt = page.locator('.flashcard--practice');
   const word = (await prompt.getAttribute('aria-label'))?.replace('Flashcard for ', '') ?? '';

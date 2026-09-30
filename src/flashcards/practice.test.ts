@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { buildOptions, buildRound, filterCardsForSets, formatTimeUntil, promptSideFor, shuffle } from './practice';
+import {
+  buildOptions,
+  buildRound,
+  createSeededRng,
+  filterCardsForSets,
+  formatTimeUntil,
+  newCardsPerRound,
+  promptSideFor,
+  shuffle,
+  withDefaultSettings,
+} from './practice';
+import { applyReviewResult } from './review';
 import { testCard } from './testCards';
-import { UNCATEGORIZED_SET_ID } from './types';
+import { ChildProfile, UNCATEGORIZED_SET_ID } from './types';
+
+const DAY = 24 * 60 * 60 * 1000;
 
 describe('buildOptions', () => {
   const animals = ['Cat', 'Dog', 'Cow', 'Pig', 'Hen'].map((name) => testCard(name.toLowerCase(), { name, setIds: ['animals'] }));
@@ -40,13 +53,43 @@ describe('buildOptions', () => {
 });
 
 describe('buildRound', () => {
+  const cards = Array.from({ length: 12 }, (_, index) => testCard(`card-${index}`, { createdAt: index }));
+  const answered = (ids: string[]) =>
+    Object.fromEntries(ids.map((id) => [id, applyReviewResult(undefined, true, Date.now() - 2 * DAY)]));
+
   it('picks at most a round of cards, with no repeats', () => {
-    const cards = Array.from({ length: 12 }, (_, index) => testCard(`card-${index}`));
-    const round = buildRound(cards, {}, 5);
-    expect(round).toHaveLength(5);
-    expect(new Set(round).size).toBe(5);
-    expect(round.every((id) => cards.some((card) => card.id === id))).toBe(true);
-    expect(buildRound(cards.slice(0, 3), {}, 5)).toHaveLength(3);
+    const { cardIds, newCardIds } = buildRound(cards, {}, 5);
+    expect(cardIds).toHaveLength(5);
+    expect(new Set(cardIds).size).toBe(5);
+    expect(cardIds.every((id) => cards.some((card) => card.id === id))).toBe(true);
+    expect(newCardIds).toEqual([]);
+    expect(buildRound(cards.slice(0, 3), {}, 5).cardIds).toHaveLength(3);
+  });
+
+  it('introduces a few new cards at most, newest first, and fills up with familiar ones', () => {
+    const progress = answered(['card-0', 'card-1', 'card-2', 'card-3', 'card-4']);
+    const { cardIds, newCardIds } = buildRound(cards, progress, 10, { introduceNew: true });
+    expect(newCardIds).toEqual(['card-11', 'card-10', 'card-9']);
+    expect(cardIds).toHaveLength(8);
+    expect(newCardIds.every((id) => cardIds.includes(id))).toBe(true);
+  });
+
+  it('starts the questions with a familiar card when there is one', () => {
+    const progress = answered(['card-0']);
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const { cardIds } = buildRound(cards, progress, 4, { introduceNew: true, random: createSeededRng(seed) });
+      expect(cardIds[0]).toBe('card-0');
+    }
+  });
+
+  it('only has new cards when the child has met none yet', () => {
+    const { cardIds, newCardIds } = buildRound(cards, {}, 5, { introduceNew: true });
+    expect(newCardIds).toHaveLength(2);
+    expect([...cardIds].sort()).toEqual([...newCardIds].sort());
+  });
+
+  it('introduces more new cards in longer rounds', () => {
+    expect([5, 10, 20].map(newCardsPerRound)).toEqual([2, 3, 5]);
   });
 });
 
@@ -80,5 +123,18 @@ describe('small helpers', () => {
     expect(formatTimeUntil(3 * 60 * 60 * 1000)).toBe('3 hr');
     expect(formatTimeUntil(24 * 60 * 60 * 1000)).toBe('1 day');
     expect(formatTimeUntil(3 * 24 * 60 * 60 * 1000)).toBe('3 days');
+  });
+});
+
+describe('withDefaultSettings', () => {
+  it('fills in settings added after a profile was saved', () => {
+    const saved = {
+      id: 'p1',
+      name: 'Ivy',
+      avatar: '🦊',
+      createdAt: 0,
+      settings: { setIds: ['animals'], choiceCount: 3, promptMode: 'mix', roundSize: 10, readAloud: false, soundEffects: true },
+    } as unknown as ChildProfile;
+    expect(withDefaultSettings(saved).settings).toEqual({ ...saved.settings, introduceNew: true });
   });
 });

@@ -1,4 +1,5 @@
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -18,6 +19,8 @@ type PracticeSessionProps = {
   profile: ChildProfile;
   /** The cards in this round, in the order they're asked. */
   cards: FlashcardData[];
+  /** Cards the child hasn't met, introduced before the questions and then asked with two choices. */
+  newCards?: FlashcardData[];
   /** Cards to draw the wrong answers from. */
   pool: FlashcardData[];
   seed: number;
@@ -36,8 +39,19 @@ const summaryHeadline = (correct: number, total: number) => {
   return 'Good practice';
 };
 
-export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestart, onExit, error }: PracticeSessionProps) {
+export function PracticeSession({
+  profile,
+  cards,
+  newCards = [],
+  pool,
+  seed,
+  onAnswer,
+  onRestart,
+  onExit,
+  error,
+}: PracticeSessionProps) {
   const { settings } = profile;
+  const [introIndex, setIntroIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const [wrongIds, setWrongIds] = useState<string[]>([]);
   const [solved, setSolved] = useState(false);
@@ -45,12 +59,21 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
   const [complete, setComplete] = useState(false);
   const nextButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const card = complete ? null : cards[index] ?? null;
+  const introCard = complete ? null : newCards[introIndex] ?? null;
+  const card = complete || introCard ? null : cards[index] ?? null;
   const side = promptSideFor(settings.promptMode, index);
+  // A card that was just introduced is asked with only two choices.
+  const isNewCard = card !== null && newCards.some((newCard) => newCard.id === card.id);
+  const choiceCount = isNewCard ? Math.min(2, settings.choiceCount) : settings.choiceCount;
   const options = useMemo(
-    () => (card ? buildOptions(card, pool, settings.choiceCount, seed + hashString(card.id)) : []),
-    [card, pool, settings.choiceCount, seed],
+    () => (card ? buildOptions(card, pool, choiceCount, seed + hashString(card.id)) : []),
+    [card, pool, choiceCount, seed],
   );
+
+  // Say each new card as it's introduced.
+  useEffect(() => {
+    if (introCard && settings.readAloud) speakCard(introCard);
+  }, [introCard, settings.readAloud]);
 
   // Say the word when a "find the picture" question appears.
   useEffect(() => {
@@ -98,10 +121,27 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
     setSolved(false);
   };
 
+  const nextIntro = () => {
+    stopSpeaking();
+    setIntroIndex(introIndex + 1);
+  };
+
   const exit = () => {
     stopSpeaking();
     onExit();
   };
+
+  const header = (
+    <Stack direction="row" alignItems="center" spacing={1.5}>
+      <ChildAvatar profile={profile} size={40} />
+      <Typography variant="h6" component="h2" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
+        {profile.name}
+      </Typography>
+      <IconButton aria-label="Stop practicing" onClick={exit}>
+        <CloseIcon />
+      </IconButton>
+    </Stack>
+  );
 
   if (complete) {
     const correctCount = cards.filter((roundCard) => results[roundCard.id]).length;
@@ -117,6 +157,18 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
           <Typography variant="h6" component="p" color="text.secondary">
             ⭐ {correctCount} of {cards.length} right on the first try
           </Typography>
+          {newCards.length > 0 && (
+            <Stack spacing={1} alignItems="center">
+              <Typography variant="body2" color="text.secondary">
+                New today:
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center">
+                {newCards.map((newCard) => (
+                  <Chip key={newCard.id} icon={<AutoAwesomeIcon />} label={newCard.name} color="secondary" variant="outlined" />
+                ))}
+              </Stack>
+            </Stack>
+          )}
           {missed.length > 0 && (
             <Stack spacing={1} alignItems="center">
               <Typography variant="body2" color="text.secondary">
@@ -147,17 +199,53 @@ export function PracticeSession({ profile, cards, pool, seed, onAnswer, onRestar
     );
   }
 
+  if (introCard) {
+    const last = introIndex + 1 >= newCards.length;
+    return (
+      <Box component="section" aria-label={`New cards for ${profile.name}`} className="practice">
+        {header}
+        <Stack spacing={1.5} alignItems="center" className="practice-intro">
+          <Chip
+            icon={<AutoAwesomeIcon />}
+            label={newCards.length > 1 ? `New card ${introIndex + 1} of ${newCards.length}` : 'New card'}
+            color="secondary"
+            sx={{ fontWeight: 800 }}
+          />
+          <ButtonBase
+            key={introCard.id}
+            focusRipple
+            className="practice-intro__card"
+            onClick={() => speakCard(introCard)}
+            aria-label={`Hear ${introCard.name}`}
+          >
+            <CardFront card={introCard} alt="" />
+          </ButtonBase>
+          <p className="practice-intro__word">{introCard.name}</p>
+          <Button variant="text" startIcon={<VolumeUpIcon />} onClick={() => speakCard(introCard)}>
+            Hear it again
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            endIcon={<ArrowForwardIcon />}
+            onClick={nextIntro}
+            sx={{ minWidth: 170, fontSize: '1.15rem' }}
+          >
+            {last ? "Let's play!" : 'Next'}
+          </Button>
+        </Stack>
+        {error && (
+          <Typography variant="body2" color="error" textAlign="center">
+            {error}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Box component="section" aria-label={`Practice for ${profile.name}`} className="practice">
-      <Stack direction="row" alignItems="center" spacing={1.5}>
-        <ChildAvatar profile={profile} size={40} />
-        <Typography variant="h6" component="h2" noWrap sx={{ flexGrow: 1, minWidth: 0, fontWeight: 800 }}>
-          {profile.name}
-        </Typography>
-        <IconButton aria-label="Stop practicing" onClick={exit}>
-          <CloseIcon />
-        </IconButton>
-      </Stack>
+      {header}
 
       <Box className="practice-dots" role="img" aria-label={`Card ${index + 1} of ${cards.length}`}>
         {cards.map((roundCard, cardIndex) => {

@@ -47,6 +47,8 @@ export type PracticeSettings = {
   roundSize: number;
   readAloud: boolean;
   soundEffects: boolean;
+  /** Show and say cards the child hasn't met yet before asking about them. */
+  introduceNew: boolean;
 };
 
 export type ChildProfile = {

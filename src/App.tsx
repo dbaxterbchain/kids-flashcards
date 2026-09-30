@@ -45,6 +45,8 @@ const emptyStateSx = {
 type PracticeRound = {
   profileId: string;
   cardIds: string[];
+  /** Cards to introduce before the questions. */
+  newCardIds: string[];
   /** Cards the wrong answers are drawn from. */
   poolIds: string[];
   seed: number;
@@ -162,6 +164,7 @@ export default function App() {
   }, [activeProfile, availableSets]);
   const roundCards = useMemo(() => cardsForIds(round?.cardIds ?? [], cards), [cards, round]);
   const roundPool = useMemo(() => cardsForIds(round?.poolIds ?? [], cards), [cards, round]);
+  const roundNewCards = useMemo(() => cardsForIds(round?.newCardIds ?? [], cards), [cards, round]);
   const hasOwnContent = profiles.length > 0 || cards.some((card) => !STARTER_CARD_IDS.has(card.id));
   const showBackupReminder = hasOwnContent && (lastBackupAt === null || Date.now() - lastBackupAt > BACKUP_REMINDER_MS);
   const defaultAvatar =
@@ -269,7 +272,9 @@ export default function App() {
     setPracticeError(null);
     setRound({
       profileId: activeProfile.id,
-      cardIds: buildRound(pool, progress, activeProfile.settings.roundSize),
+      ...buildRound(pool, progress, activeProfile.settings.roundSize, {
+        introduceNew: activeProfile.settings.introduceNew,
+      }),
       poolIds: pool.map((card) => card.id),
       seed: Date.now(),
     });
@@ -313,6 +318,7 @@ export default function App() {
         key={round.seed}
         profile={activeProfile}
         cards={roundCards}
+        newCards={roundNewCards}
         pool={roundPool}
         seed={round.seed}
         onAnswer={handleAnswer}

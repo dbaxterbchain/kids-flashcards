@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { deleteProfile, getProfiles, getProgress, putProfile, putProgress } from '../db/progressDb';
+import { withDefaultSettings } from '../flashcards/practice';
 import { applyReviewResult, ProgressByCard } from '../flashcards/review';
 import { CardProgress, ChildProfile, FlashcardData } from '../flashcards/types';
 import { useLocalStorageState } from './useLocalStorage';
@@ -42,7 +43,7 @@ export function useChildProfiles(cards: FlashcardData[]) {
     let cancelled = false;
     getProfiles()
       .then((stored) => {
-        if (!cancelled) setProfiles([...stored].sort((a, b) => a.createdAt - b.createdAt));
+        if (!cancelled) setProfiles(stored.map(withDefaultSettings).sort((a, b) => a.createdAt - b.createdAt));
       })
       .catch((loadError) => {
         console.error('Unable to load children', loadError);

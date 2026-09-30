@@ -326,6 +326,18 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
               }
               label="Sound effects"
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.introduceNew}
+                  onChange={(event) => updateSettings({ introduceNew: event.target.checked })}
+                />
+              }
+              label="Show new cards before asking about them"
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ pl: 6.5 }}>
+              A few new cards a round are shown and said first, then asked with just two choices.
+            </Typography>
           </Stack>
 
           {saveError && <Alert severity="error">{saveError}</Alert>}
