@@ -8,6 +8,7 @@ import IosShareIcon from '@mui/icons-material/IosShare';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PrintIcon from '@mui/icons-material/Print';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {
   Alert,
@@ -49,6 +50,7 @@ import { ChildProgressDialog } from './ChildProgressDialog';
 import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
 import { SetImportDialog } from './SetImportDialog';
+import { PrintSetDialog } from './PrintSetDialog';
 import { SetLibraryDialog } from './SetLibraryDialog';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
@@ -302,6 +304,7 @@ function SetsTab({
   const [renameValue, setRenameValue] = useState('');
   const [menu, setMenu] = useState<{ anchor: HTMLElement; set: FlashcardSet } | null>(null);
   const [deleting, setDeleting] = useState<FlashcardSet | null>(null);
+  const [printing, setPrinting] = useState<FlashcardSet | null>(null);
   const [importing, setImporting] = useState<SetPackage | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [message, setMessage] = useState<SetsMessage | null>(null);
@@ -474,6 +477,19 @@ function SetsTab({
           Rename
         </MenuItem>
         <MenuItem
+          disabled={Boolean(menu) && countFor(menu?.set.id ?? '') === 0}
+          onClick={() => {
+            if (!menu) return;
+            setPrinting(menu.set);
+            setMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <PrintIcon fontSize="small" />
+          </ListItemIcon>
+          Print
+        </MenuItem>
+        <MenuItem
           sx={{ color: 'error.main' }}
           onClick={() => {
             if (!menu) return;
@@ -512,6 +528,11 @@ function SetsTab({
       </Dialog>
 
       <DeleteSetDialog set={deleting} cards={cards} onClose={() => setDeleting(null)} onDelete={handleDelete} />
+      <PrintSetDialog
+        set={printing}
+        cards={printing ? cards.filter((card) => card.setIds?.includes(printing.id)) : []}
+        onClose={() => setPrinting(null)}
+      />
       <SetImportDialog pkg={importing} sets={sets} onClose={() => setImporting(null)} onImport={handleImport} />
       <SetLibraryDialog open={libraryOpen} sets={sets} onClose={() => setLibraryOpen(false)} onAdd={onAddLibrarySet} />
 
