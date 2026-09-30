@@ -10,7 +10,9 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "brand": "node scripts/brand/build.mjs",
+    "brand:screenshots": "node scripts/brand/screenshots.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

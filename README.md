@@ -84,8 +84,9 @@ src/
   hooks/            // Card library, child profiles, routing, audio recorder, PWA hooks
   styles/           // Global styles
 e2e/                // Browser tests (Playwright)
+scripts/brand/       // Draws the logo, icons, share image and install screenshots
 public/
-  manifest.webmanifest, icons, assets
+  logo.svg, favicon.ico, icons/, og-image.png, screenshots/, offline.html
 ```
 
 ## PWA & Storage Notes
@@ -97,6 +98,17 @@ public/
 - Backups and set files are checked when opened: only embedded pictures and recordings (never links), plain colors, language tags, and known fields are kept.
 - The set library's pictures are emoji and small generated drawings, so the library is a small download that's only loaded when a grown-up opens it (and is cached for offline use). Its emoji are all from Emoji 12.0 (2019) or earlier, so Windows 10 and older phones show them; a unit test keeps it that way.
 - Choices of voice are kept on the device (voices differ from device to device), not in backups.
+
+## Branding
+- **Logo:** two flashcards, a white one with a gold star in front of a pink-to-yellow one, on a blue rounded square. It's drawn by `scripts/brand/logo.mjs` and saved as `public/logo.svg`.
+- **Colors:** brand blue `#2563eb` (buttons and the browser's theme color), ink `#0f172a`, the card gradient `#ffd166` to `#ff7eb6`, mint `#7de0d5`, and the page background `#f4f7ff`.
+- **Font:** [Baloo 2](https://fonts.google.com/specimen/Baloo+2), extra bold for headings and card words.
+- **Files in `public/`:** `favicon.ico` and `logo.svg` (browser tabs), `icons/` (install icons: the maskable ones keep the art in the middle 80% for launchers that cut their own shape, and `apple-touch-icon.png` is for iPhone and iPad home screens), `og-image.png` (the 1200 × 630 picture shown with shared links) and `screenshots/` (shown when installing the app).
+- **Making them again:** `npm run brand` redraws the logo, favicons, icons and share image (run `npm install --no-save sharp` first so the PNGs come out small). With the app running (`npm run dev`), `npm run brand:screenshots` retakes the install screenshots.
+
+## Search and sharing
+- `index.html` has the page title and description, Open Graph and Twitter tags for link previews, and a loading screen with a short description of the app that search engines can read before the app starts.
+- At build time, the site's address adds what has to be a full link: the canonical link, the share image's address, structured data (JSON-LD describing the app as a free educational web app for kids 2 and up, published by Beanchain Coffee), and `robots.txt` and `sitemap.xml`. Netlify provides the address as `URL`; set `SITE_URL` to build for somewhere else. Local builds without an address leave those parts out.
 
 ## Roadmap
 See [ROADMAP.md](ROADMAP.md) for what's been done and ideas for later.

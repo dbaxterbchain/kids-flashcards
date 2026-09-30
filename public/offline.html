@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kids Flashcards • Offline</title>
+    <meta name="robots" content="noindex" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f172a" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#2563eb" />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <style>
       :root {
         font-family: 'Baloo 2', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #f9fbff;
+        background: #f4f7ff;
         color: #0f172a;
       }
       body {
@@ -18,48 +22,53 @@
         display: grid;
         place-items: center;
         padding: 2rem;
-        background: radial-gradient(circle at 20% 20%, rgba(255, 214, 102, 0.2), transparent 35%),
-          radial-gradient(circle at 90% 10%, rgba(126, 139, 255, 0.2), transparent 30%),
-          radial-gradient(circle at 40% 80%, rgba(125, 224, 213, 0.25), transparent 40%),
-          #f9fbff;
+        box-sizing: border-box;
+        background: radial-gradient(circle at 15% 15%, rgba(125, 224, 213, 0.35), transparent 35%),
+          radial-gradient(circle at 85% 10%, rgba(255, 209, 102, 0.3), transparent 30%),
+          radial-gradient(circle at 70% 90%, rgba(255, 126, 182, 0.2), transparent 40%),
+          #f4f7ff;
       }
       .card {
-        max-width: 560px;
+        max-width: 520px;
         padding: 2rem;
         background: #ffffff;
         border-radius: 20px;
-        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
         border: 1px solid rgba(15, 23, 42, 0.06);
         text-align: center;
       }
+      .card img {
+        display: block;
+        margin: 0 auto 0.75rem;
+      }
       .card h1 {
         margin: 0 0 0.5rem;
-        font-size: clamp(2rem, 4vw, 2.6rem);
+        font-size: clamp(1.8rem, 4vw, 2.3rem);
+        line-height: 1.15;
       }
       .card p {
-        margin: 0 0 1rem;
+        margin: 0 0 1.25rem;
         color: #475569;
-        font-weight: 650;
+        font-weight: 600;
       }
       .cta {
-        padding: 0.85rem 1.1rem;
-        background: linear-gradient(120deg, #7d7aff, #ff7eb6);
-        color: #0b1021;
-        font-weight: 800;
-        border: none;
-        border-radius: 14px;
-        cursor: pointer;
-        box-shadow: 0 10px 25px rgba(127, 124, 255, 0.35);
-        text-decoration: none;
         display: inline-block;
+        padding: 0.8rem 1.3rem;
+        border-radius: 14px;
+        background: #2563eb;
+        color: #ffffff;
+        font-weight: 800;
+        text-decoration: none;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
       }
     </style>
   </head>
   <body>
     <main class="card">
+      <img src="/logo.svg" width="80" height="80" alt="" />
       <h1>Offline right now</h1>
-      <p>You can still flip any flashcards you already opened. Reconnect to sync new cards and audio.</p>
-      <a class="cta" href="/">Back to the deck</a>
+      <p>Your cards, children and progress are saved on this device, so Kids Flashcards still works without the internet.</p>
+      <a class="cta" href="/">Open Kids Flashcards</a>
     </main>
   </body>
 </html>
