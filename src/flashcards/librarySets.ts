@@ -386,6 +386,22 @@ const takeAway: Pair[] = [
 const makeTen: Pair[] = range(1, 9).map((n) => [`${n} + ? = 10`, String(10 - n)]);
 const timesTable = (factor: number): Pair[] => range(1, 10).map((n) => [`${factor} × ${n}`, String(factor * n)]);
 const binary: Pair[] = range(0, 15).map((n) => [n.toString(2).padStart(4, '0'), String(n)]);
+// Count on by the step: "2, 4, 6, ?" is 8. Each answer appears once.
+const skipCounting: Pair[] = [
+  [2, 2],
+  [3, 3],
+  [5, 5],
+  [10, 10],
+  [1, 2],
+  [4, 4],
+  [7, 2],
+  [15, 5],
+  [20, 10],
+  [11, 1],
+].map(([start, step]) => {
+  const terms = [start, start + step, start + 2 * step];
+  return [`${terms.join(', ')}, ?`, String(start + 3 * step)];
+});
 
 // --- Reading -------------------------------------------------------------------------------------
 
@@ -497,6 +513,54 @@ export const LIBRARY_SETS: LibrarySet[] = [
       ['🦗', 'Cricket'],
       ['🦟', 'Mosquito'],
       ['🦂', 'Scorpion'],
+    ]),
+  },
+  {
+    id: 'animal-sounds',
+    name: 'Animal sounds',
+    subject: 'animals',
+    minAge: 2,
+    description: 'Moo, woof, quack! Kids hear a sound and find the animal that makes it.',
+    cards: textCards([
+      ['🐮', 'Moo'],
+      ['🐶', 'Woof'],
+      ['🐱', 'Meow'],
+      ['🐷', 'Oink'],
+      ['🐑', 'Baa'],
+      ['🦆', 'Quack'],
+      ['🐓', 'Cock-a-doodle-doo'],
+      ['🐴', 'Neigh'],
+      ['🐸', 'Ribbit'],
+      ['🦁', 'Roar'],
+      ['🐍', 'Hiss'],
+      ['🐝', 'Buzz'],
+      ['🦉', 'Hoot'],
+      ['🐭', 'Squeak'],
+    ]),
+  },
+  {
+    id: 'animal-groups',
+    name: 'Animal groups',
+    subject: 'animals',
+    minAge: 5,
+    description: 'Mammal, bird, reptile, amphibian, fish or insect? Each card shows an animal to sort.',
+    cards: textCards([
+      ['🐶', 'Mammal', 'dog'],
+      ['🐘', 'Mammal', 'elephant'],
+      ['🐳', 'Mammal', 'whale'],
+      ['🦇', 'Mammal', 'bat'],
+      ['🐦', 'Bird', 'bird'],
+      ['🐧', 'Bird', 'penguin'],
+      ['🦉', 'Bird', 'owl'],
+      ['🐍', 'Reptile', 'snake'],
+      ['🐢', 'Reptile', 'turtle'],
+      ['🐊', 'Reptile', 'crocodile'],
+      ['🐸', 'Amphibian', 'frog'],
+      ['🐟', 'Fish', 'fish'],
+      ['🦈', 'Fish', 'shark'],
+      ['🐝', 'Insect', 'bee'],
+      ['🐞', 'Insect', 'ladybug'],
+      ['🦋', 'Insect', 'butterfly'],
     ]),
   },
 
@@ -836,6 +900,32 @@ export const LIBRARY_SETS: LibrarySet[] = [
       ['📏', 'Ruler'],
     ]),
   },
+  {
+    id: 'element-symbols',
+    name: 'Element symbols',
+    subject: 'science',
+    minAge: 9,
+    description: 'Chemical symbols for common elements, from H for hydrogen to Au for gold.',
+    cards: textCards(
+      [
+        ['H', 'Hydrogen'],
+        ['He', 'Helium'],
+        ['C', 'Carbon'],
+        ['N', 'Nitrogen'],
+        ['O', 'Oxygen'],
+        ['Na', 'Sodium'],
+        ['Mg', 'Magnesium'],
+        ['Cl', 'Chlorine'],
+        ['K', 'Potassium'],
+        ['Ca', 'Calcium'],
+        ['Fe', 'Iron'],
+        ['Cu', 'Copper'],
+        ['Ag', 'Silver'],
+        ['Au', 'Gold'],
+      ],
+      { background: '#e0f2fe' },
+    ),
+  },
 
   // Math
   {
@@ -877,6 +967,14 @@ export const LIBRARY_SETS: LibrarySet[] = [
     minAge: 6,
     description: 'What goes with each number to make 10?',
     cards: textCards(makeTen),
+  },
+  {
+    id: 'skip-counting',
+    name: 'Skip counting',
+    subject: 'math',
+    minAge: 6,
+    description: 'Count on by 2s, 3s, 5s and 10s: what comes next?',
+    cards: textCards(skipCounting),
   },
   {
     id: 'telling-time',
