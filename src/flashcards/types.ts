@@ -7,6 +7,8 @@ export type FlashcardData = {
   frontText?: string;
   createdAt: number;
   audioUrl?: string;
+  /** Language to read the word aloud in (e.g. "es-ES"); the device's language when not set. */
+  lang?: string;
   setIds?: string[];
   backgroundColor?: string;
   /** Progress saved before practice was tracked per child; copied to the first child a parent adds. */

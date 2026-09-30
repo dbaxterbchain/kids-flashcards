@@ -1,10 +1,14 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import IosShareIcon from '@mui/icons-material/IosShare';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {
   Alert,
+  AlertColor,
   Box,
   Button,
   Chip,
@@ -18,7 +22,11 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
+  Snackbar,
   Stack,
   Switch,
   Tab,
@@ -26,13 +34,17 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { FormEvent, useState } from 'react';
-import { Backup, SaveResult } from '../flashcards/backup';
+import { ChangeEvent, FormEvent, useState } from 'react';
+import { Backup, BackupError, SaveResult } from '../flashcards/backup';
 import { PROMPT_MODE_LABELS } from '../flashcards/practice';
+import { parseSetPackage, SetPackage } from '../flashcards/setPackage';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
+import { RemoveSetOptions } from '../hooks/useCardLibrary';
 import { BackupSection } from './BackupSection';
 import { ChildAvatar } from './ChildAvatar';
+import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
+import { SetImportDialog } from './SetImportDialog';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
 
@@ -50,8 +62,12 @@ type ManageViewProps = {
   onDeleteCard: (card: FlashcardData) => void;
   onCreateSet: (name: string) => Promise<unknown>;
   onRenameSet: (id: string, name: string) => Promise<void>;
-  onDeleteSet: (set: FlashcardSet) => Promise<void>;
+  onDeleteSet: (set: FlashcardSet, options: RemoveSetOptions) => Promise<void>;
   onToggleSetHidden: (setId: string) => void;
+  /** Saves or shares a file with the set's cards, pictures and recordings. */
+  onShareSet: (set: FlashcardSet) => Promise<SaveResult>;
+  /** Adds a shared set as a new set. */
+  onImportSet: (pkg: SetPackage) => Promise<FlashcardSet>;
   onAddChild: () => void;
   onEditChild: (profile: ChildProfile) => void;
   onSpeakOnFlipChange: (value: boolean) => void;
@@ -248,11 +264,27 @@ function CardsTab({
   );
 }
 
-function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDeleteSet, onToggleSetHidden }: ManageViewProps) {
+type SetsMessage = { severity: AlertColor; text: string };
+
+function SetsTab({
+  cards,
+  sets,
+  hiddenSetIds,
+  onCreateSet,
+  onRenameSet,
+  onDeleteSet,
+  onToggleSetHidden,
+  onShareSet,
+  onImportSet,
+}: ManageViewProps) {
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<FlashcardSet | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ anchor: HTMLElement; set: FlashcardSet } | null>(null);
+  const [deleting, setDeleting] = useState<FlashcardSet | null>(null);
+  const [importing, setImporting] = useState<SetPackage | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<SetsMessage | null>(null);
   const rows = [...sets, ...(cards.some(hasNoSet) ? [{ id: UNCATEGORIZED_SET_ID, name: 'No set' }] : [])];
   const countFor = (setId: string) =>
     setId === UNCATEGORIZED_SET_ID ? cards.filter(hasNoSet).length : cards.filter((card) => card.setIds?.includes(setId)).length;
@@ -263,10 +295,9 @@ function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDelete
     try {
       await onCreateSet(newName);
       setNewName('');
-      setError(null);
     } catch (addError) {
       console.error(addError);
-      setError('Unable to add that set right now.');
+      setMessage({ severity: 'error', text: 'Unable to add that set right now.' });
     }
   };
 
@@ -276,28 +307,72 @@ function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDelete
     try {
       await onRenameSet(renaming.id, renameValue);
       setRenaming(null);
-      setError(null);
     } catch (renameError) {
       console.error(renameError);
-      setError('Unable to rename that set right now.');
+      setMessage({ severity: 'error', text: 'Unable to rename that set right now.' });
     }
   };
 
-  const handleDelete = async (set: FlashcardSet) => {
+  const handleDelete = async (set: FlashcardSet, options: RemoveSetOptions) => {
     try {
-      await onDeleteSet(set);
-      setError(null);
+      await onDeleteSet(set, options);
+      setDeleting(null);
     } catch (deleteError) {
       console.error(deleteError);
-      setError('Unable to delete that set right now.');
+      setDeleting(null);
+      setMessage({ severity: 'error', text: 'Unable to delete that set right now.' });
     }
+  };
+
+  const handleShare = async (set: FlashcardSet) => {
+    setSharingId(set.id);
+    try {
+      const result = await onShareSet(set);
+      if (result === 'shared') {
+        setMessage({ severity: 'success', text: `Shared “${set.name}”. Others can add it with Import a set.` });
+      }
+      if (result === 'downloaded') {
+        setMessage({
+          severity: 'success',
+          text: `Saved “${set.name}” to your downloads. Send the file to anyone, and they can add it with Import a set.`,
+        });
+      }
+    } catch (shareError) {
+      console.error('Unable to share the set', shareError);
+      setMessage({ severity: 'error', text: 'Unable to share that set right now.' });
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setImporting(parseSetPackage(await file.text()));
+    } catch (readError) {
+      setMessage({
+        severity: 'error',
+        text: readError instanceof BackupError ? readError.message : "Couldn't read that file.",
+      });
+    }
+  };
+
+  const handleImport = async (pkg: SetPackage) => {
+    const set = await onImportSet(pkg);
+    setImporting(null);
+    setMessage({ severity: 'success', text: `Added “${set.name}” with ${plural(pkg.cards.length, 'card')}.` });
   };
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        Switch a set off to hide it from kids. Its cards stay here.
-      </Typography>
+      <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
+          Import a set
+          <input hidden type="file" accept="application/json,.json" onChange={handleImportFile} />
+        </Button>
+      </Stack>
       <Stack component="form" onSubmit={handleAdd} direction="row" spacing={1} alignItems="flex-start">
         <TextField
           size="small"
@@ -311,34 +386,35 @@ function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDelete
           Add set
         </Button>
       </Stack>
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      <Typography variant="body2" color="text.secondary">
+        Switch a set off to hide it from kids. Its cards stay here.
+      </Typography>
       <List disablePadding sx={listSx}>
         {rows.map((set, index) => {
           const shown = !hiddenSetIds.includes(set.id);
           const editable = set.id !== UNCATEGORIZED_SET_ID;
+          const count = countFor(set.id);
           return (
             <ListItem
               key={set.id}
               divider={index < rows.length - 1}
-              sx={{ pr: editable ? 13 : 2 }}
+              sx={{ pr: editable ? 12 : 2 }}
               secondaryAction={
                 editable && (
                   <Stack direction="row" spacing={0.5}>
                     <IconButton
-                      aria-label={`Rename ${set.name}`}
-                      onClick={() => {
-                        setRenaming(set);
-                        setRenameValue(set.name);
-                      }}
+                      aria-label={`Share ${set.name}`}
+                      disabled={count === 0 || sharingId !== null}
+                      onClick={() => void handleShare(set)}
                     >
-                      <EditIcon />
+                      <IosShareIcon />
                     </IconButton>
-                    <IconButton aria-label={`Delete ${set.name}`} color="error" onClick={() => void handleDelete(set)}>
-                      <DeleteIcon />
+                    <IconButton
+                      aria-label={`More for ${set.name}`}
+                      aria-haspopup="menu"
+                      onClick={(event) => setMenu({ anchor: event.currentTarget, set })}
+                    >
+                      <MoreVertIcon />
                     </IconButton>
                   </Stack>
                 )
@@ -353,12 +429,41 @@ function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDelete
               />
               <ListItemText
                 primary={set.name}
-                secondary={`${plural(countFor(set.id), 'card')} · ${shown ? 'Shown to kids' : 'Hidden from kids'}`}
+                secondary={`${plural(count, 'card')} · ${shown ? 'Shown to kids' : 'Hidden from kids'}`}
               />
             </ListItem>
           );
         })}
       </List>
+
+      <Menu anchorEl={menu?.anchor} open={Boolean(menu)} onClose={() => setMenu(null)}>
+        <MenuItem
+          onClick={() => {
+            if (!menu) return;
+            setRenaming(menu.set);
+            setRenameValue(menu.set.name);
+            setMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          Rename
+        </MenuItem>
+        <MenuItem
+          sx={{ color: 'error.main' }}
+          onClick={() => {
+            if (!menu) return;
+            setDeleting(menu.set);
+            setMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          Delete
+        </MenuItem>
+      </Menu>
 
       <Dialog open={Boolean(renaming)} onClose={() => setRenaming(null)} maxWidth="xs" fullWidth>
         <form onSubmit={handleRename}>
@@ -382,6 +487,22 @@ function SetsTab({ cards, sets, hiddenSetIds, onCreateSet, onRenameSet, onDelete
           </DialogActions>
         </form>
       </Dialog>
+
+      <DeleteSetDialog set={deleting} cards={cards} onClose={() => setDeleting(null)} onDelete={handleDelete} />
+      <SetImportDialog pkg={importing} sets={sets} onClose={() => setImporting(null)} onImport={handleImport} />
+
+      <Snackbar
+        open={Boolean(message)}
+        autoHideDuration={message?.severity === 'error' ? null : 8000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setMessage(null);
+        }}
+      >
+        {/* Keeps the last message while the snackbar fades out. */}
+        <Alert severity={message?.severity ?? 'success'} variant="filled" onClose={() => setMessage(null)} sx={{ width: '100%' }}>
+          {message?.text}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

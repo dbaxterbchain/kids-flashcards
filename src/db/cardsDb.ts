@@ -81,9 +81,12 @@ export async function putSet(set: FlashcardSet) {
   await requestToPromise(store.put(set));
 }
 
-export async function deleteSet(id: string) {
-  const store = await getSetStore('readwrite');
-  await requestToPromise(store.delete(id));
+function transactionDone(tx: IDBTransaction) {
+  return new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 /** Replaces every card and set in one transaction, so a failure leaves the old ones in place. */
@@ -96,9 +99,26 @@ export async function replaceCardsAndSets(cards: FlashcardData[], sets: Flashcar
   setStore.clear();
   cards.forEach((card) => cardStore.put(card));
   sets.forEach((set) => setStore.put(set));
-  await new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
+  await transactionDone(tx);
+}
+
+/** Adds a set and its cards together, so a failure (like full storage) doesn't leave half a set. */
+export async function addSetWithCards(set: FlashcardSet, cards: FlashcardData[]) {
+  const db = await openDb();
+  const tx = db.transaction([STORE_NAME, SET_STORE], 'readwrite');
+  const cardStore = tx.objectStore(STORE_NAME);
+  tx.objectStore(SET_STORE).put(set);
+  cards.forEach((card) => cardStore.put(card));
+  await transactionDone(tx);
+}
+
+/** Deletes a set, deleting some cards and saving changes to others in the same transaction. */
+export async function deleteSetAndCards(setId: string, deletedCardIds: string[], updatedCards: FlashcardData[]) {
+  const db = await openDb();
+  const tx = db.transaction([STORE_NAME, SET_STORE], 'readwrite');
+  const cardStore = tx.objectStore(STORE_NAME);
+  tx.objectStore(SET_STORE).delete(setId);
+  deletedCardIds.forEach((id) => cardStore.delete(id));
+  updatedCards.forEach((card) => cardStore.put(card));
+  await transactionDone(tx);
 }

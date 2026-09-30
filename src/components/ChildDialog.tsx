@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { ChangeEvent, useState } from 'react';
 import { prepareAvatarImage } from '../flashcards/fileUtils';
+import { newId } from '../flashcards/ids';
 import { AGE_PRESETS, AVATAR_GROUPS, defaultPracticeSettings } from '../flashcards/practice';
 import { ChildProfile, FlashcardSet, PracticeSettings, PromptMode } from '../flashcards/types';
 import { ChildAvatar } from './ChildAvatar';
@@ -43,8 +44,6 @@ const promptModeHelp: Record<PromptMode, string> = {
   'name-picture': 'See a picture, then tap its word. For kids who are starting to read.',
   mix: 'Switches between both kinds of question.',
 };
-
-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSave, onRemove }: ChildDialogProps) {
   const theme = useTheme();

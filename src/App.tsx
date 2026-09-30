@@ -16,9 +16,10 @@ import { Backup, createBackup, restoreBackup, saveBackupFile } from './flashcard
 import { defaultCards, defaultSets } from './flashcards/defaultData';
 import { AVATARS, buildRound, filterCardsForSets, formatTimeUntil } from './flashcards/practice';
 import { buildPracticeQueue } from './flashcards/review';
+import { createSetPackage, saveSetFile, SetPackage } from './flashcards/setPackage';
 import { STORAGE_KEYS } from './flashcards/storageKeys';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from './flashcards/types';
-import { useCardLibrary } from './hooks/useCardLibrary';
+import { RemoveSetOptions, useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useHashRoute } from './hooks/useHashRoute';
 import { useLocalStorageState } from './hooks/useLocalStorage';
@@ -215,11 +216,15 @@ export default function App() {
     });
   };
 
-  const handleDeleteSet = async (set: FlashcardSet) => {
-    if (!window.confirm(`Delete the "${set.name}" set? Its cards stay in your library.`)) return;
-    await library.removeSet(set.id);
+  const handleDeleteSet = async (set: FlashcardSet, options: RemoveSetOptions) => {
+    await library.removeSet(set.id, options);
     setHiddenSetIds((current) => current.filter((id) => id !== set.id));
   };
+
+  const handleShareSet = (set: FlashcardSet) =>
+    saveSetFile(createSetPackage(set.name, sortedCards.filter((card) => isInSet(card, set.id))));
+
+  const handleImportSet = (pkg: SetPackage) => library.importSet(pkg);
 
   const toggleSetHidden = (setId: string) => {
     setHiddenSetIds((current) => (current.includes(setId) ? current.filter((id) => id !== setId) : [...current, setId]));
@@ -328,6 +333,8 @@ export default function App() {
           onRenameSet={library.renameSet}
           onDeleteSet={handleDeleteSet}
           onToggleSetHidden={toggleSetHidden}
+          onShareSet={handleShareSet}
+          onImportSet={handleImportSet}
           onAddChild={openAddChild}
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}
