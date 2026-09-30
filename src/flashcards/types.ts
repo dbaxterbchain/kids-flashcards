@@ -50,7 +50,10 @@ export type PracticeSettings = {
 export type ChildProfile = {
   id: string;
   name: string;
+  /** Emoji avatar; also the fallback when a photo avatar is removed. */
   avatar: string;
+  /** Optional photo avatar (a small, square data URL chosen from the parent's own pictures). */
+  avatarImage?: string;
   createdAt: number;
   settings: PracticeSettings;
 };

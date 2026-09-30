@@ -1,4 +1,6 @@
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CheckIcon from '@mui/icons-material/Check';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import {
   Alert,
   Box,
@@ -19,9 +21,11 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useState } from 'react';
-import { AGE_PRESETS, AVATARS, defaultPracticeSettings } from '../flashcards/practice';
+import { ChangeEvent, useState } from 'react';
+import { prepareAvatarImage } from '../flashcards/fileUtils';
+import { AGE_PRESETS, AVATAR_GROUPS, defaultPracticeSettings } from '../flashcards/practice';
 import { ChildProfile, FlashcardSet, PracticeSettings, PromptMode } from '../flashcards/types';
+import { ChildAvatar } from './ChildAvatar';
 
 type ChildDialogProps = {
   open: boolean;
@@ -45,10 +49,13 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${
 export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSave, onRemove }: ChildDialogProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const canTakePhoto = useMediaQuery('(pointer: coarse)');
   // One id per dialog, so retrying after a failed save can't create a second child.
   const [id] = useState(() => profile?.id ?? newId());
   const [name, setName] = useState(profile?.name ?? '');
   const [avatar, setAvatar] = useState(profile?.avatar ?? defaultAvatar);
+  const [avatarImage, setAvatarImage] = useState<string | null>(profile?.avatarImage ?? null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [settings, setSettings] = useState<PracticeSettings>(profile?.settings ?? defaultPracticeSettings());
   const [nameError, setNameError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,6 +69,23 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
         preset.settings.promptMode === settings.promptMode &&
         preset.settings.roundSize === settings.roundSize,
     )?.id ?? null;
+
+  const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Only pictures can be used as an avatar.');
+      return;
+    }
+    try {
+      setAvatarImage(await prepareAvatarImage(file));
+      setPhotoError(null);
+    } catch (error) {
+      console.error('Unable to use that picture', error);
+      setPhotoError("Couldn't use that picture. Try another one.");
+    }
+  };
 
   const toggleSet = (setId: string) => {
     const current = settings.setIds ?? [];
@@ -94,6 +118,7 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
         id,
         name: trimmed,
         avatar,
+        avatarImage: avatarImage ?? undefined,
         createdAt: profile?.createdAt ?? Date.now(),
         settings,
       }),
@@ -120,34 +145,71 @@ export function ChildDialog({ open, profile, defaultAvatar, sets, onClose, onSav
             slotProps={{ htmlInput: { maxLength: 24 } }}
           />
 
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Pick an animal</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', gap: 1 }}>
-              {AVATARS.map((option) => {
-                const selected = option.emoji === avatar;
-                return (
-                  <ButtonBase
-                    key={option.emoji}
-                    focusRipple
-                    aria-label={option.label}
-                    aria-pressed={selected}
-                    onClick={() => setAvatar(option.emoji)}
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      fontSize: 26,
-                      bgcolor: option.color,
-                      outline: selected ? '3px solid' : 'none',
-                      outlineColor: 'primary.main',
-                      outlineOffset: 2,
-                    }}
-                  >
-                    {option.emoji}
-                  </ButtonBase>
-                );
-              })}
-            </Box>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <ChildAvatar profile={{ avatar, avatarImage: avatarImage ?? undefined }} size={64} />
+              <Stack spacing={1} sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2">Avatar</Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {canTakePhoto && (
+                    <Button size="small" variant="outlined" component="label" startIcon={<PhotoCameraIcon />}>
+                      Take photo
+                      <input hidden type="file" accept="image/*" capture onChange={handlePhoto} />
+                    </Button>
+                  )}
+                  <Button size="small" variant="outlined" component="label" startIcon={<AddPhotoAlternateIcon />}>
+                    {avatarImage ? 'Change photo' : 'Use a photo'}
+                    <input hidden type="file" accept="image/*" onChange={handlePhoto} />
+                  </Button>
+                  {avatarImage && (
+                    <Button size="small" color="error" onClick={() => setAvatarImage(null)}>
+                      Remove photo
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              Use any picture from your device, like a favorite character or your child&apos;s own face. It stays on
+              this device. Or pick one below.
+            </Typography>
+            {photoError && <Alert severity="error">{photoError}</Alert>}
+            {AVATAR_GROUPS.map((group) => (
+              <Stack key={group.label} spacing={0.75}>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                  {group.label}
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', gap: 1 }}>
+                  {group.avatars.map((option) => {
+                    const selected = !avatarImage && option.emoji === avatar;
+                    return (
+                      <ButtonBase
+                        key={option.emoji}
+                        focusRipple
+                        aria-label={option.label}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          setAvatar(option.emoji);
+                          setAvatarImage(null);
+                        }}
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: '50%',
+                          fontSize: 26,
+                          bgcolor: option.color,
+                          outline: selected ? '3px solid' : 'none',
+                          outlineColor: 'primary.main',
+                          outlineOffset: 2,
+                        }}
+                      >
+                        {option.emoji}
+                      </ButtonBase>
+                    );
+                  })}
+                </Box>
+              </Stack>
+            ))}
           </Stack>
 
           <Stack spacing={1}>

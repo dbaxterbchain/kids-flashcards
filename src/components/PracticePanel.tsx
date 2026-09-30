@@ -2,9 +2,10 @@ import AddIcon from '@mui/icons-material/Add';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import TuneIcon from '@mui/icons-material/Tune';
-import { Avatar, Box, Button, Chip, IconButton, Stack, Typography } from '@mui/material';
-import { avatarColor, PROMPT_MODE_LABELS } from '../flashcards/practice';
+import { Box, Button, Chip, IconButton, Stack, Typography } from '@mui/material';
+import { PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { ChildProfile } from '../flashcards/types';
+import { ChildAvatar } from './ChildAvatar';
 
 type PracticePanelProps = {
   profiles: ChildProfile[];
@@ -94,7 +95,7 @@ export function PracticePanel({
                     key={profile.id}
                     role="radio"
                     aria-checked={selected}
-                    avatar={<Avatar>{profile.avatar}</Avatar>}
+                    avatar={<ChildAvatar profile={profile} size={30} />}
                     label={profile.name}
                     color={selected ? 'primary' : 'default'}
                     variant={selected ? 'filled' : 'outlined'}
@@ -104,12 +105,7 @@ export function PracticePanel({
                       borderRadius: 999,
                       fontWeight: 700,
                       fontSize: '0.95rem',
-                      '& .MuiChip-avatar': {
-                        width: 30,
-                        height: 30,
-                        fontSize: '1.1rem',
-                        bgcolor: avatarColor(profile.avatar),
-                      },
+                      '& .MuiChip-avatar': { width: 30, height: 30, fontSize: '1.1rem' },
                     }}
                   />
                 );

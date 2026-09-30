@@ -168,6 +168,7 @@ function readProfile(value: unknown): ChildProfile | null {
     id,
     name,
     avatar: readText(value.avatar, 16) || '🦁',
+    avatarImage: readDataUrl(value.avatarImage, 'image'),
     createdAt: readNumber(value.createdAt) ?? Date.now(),
     settings: readSettings(value.settings),
   };

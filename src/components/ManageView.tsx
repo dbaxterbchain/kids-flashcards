@@ -5,7 +5,6 @@ import LockOpenIcon from '@mui/icons-material/LockOpen';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Chip,
@@ -29,9 +28,10 @@ import {
 } from '@mui/material';
 import { FormEvent, useState } from 'react';
 import { Backup, SaveResult } from '../flashcards/backup';
-import { avatarColor, PROMPT_MODE_LABELS } from '../flashcards/practice';
+import { PROMPT_MODE_LABELS } from '../flashcards/practice';
 import { ChildProfile, FlashcardData, FlashcardSet, UNCATEGORIZED_SET_ID } from '../flashcards/types';
 import { BackupSection } from './BackupSection';
+import { ChildAvatar } from './ChildAvatar';
 import { FlashcardGrid } from './FlashcardGrid';
 
 type ManageTab = 'cards' | 'sets' | 'children' | 'settings';
@@ -412,7 +412,7 @@ function ChildrenTab({ profiles, sets, onAddChild, onEditChild }: ManageViewProp
           {profiles.map((profile, index) => (
             <ListItemButton key={profile.id} divider={index < profiles.length - 1} onClick={() => onEditChild(profile)}>
               <ListItemAvatar>
-                <Avatar sx={{ bgcolor: avatarColor(profile.avatar), fontSize: 24 }}>{profile.avatar}</Avatar>
+                <ChildAvatar profile={profile} size={40} />
               </ListItemAvatar>
               <ListItemText
                 primary={profile.name}

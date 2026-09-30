@@ -1,7 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Avatar, Box, Button, IconButton, Stack, Typography } from '@mui/material';
-import { avatarColor } from '../flashcards/practice';
+import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
+import { ChildAvatar } from './ChildAvatar';
 import { FlashcardGrid } from './FlashcardGrid';
 
 type PlaySetViewProps = {
@@ -36,11 +36,7 @@ export function PlaySetView({ title, cards, speakOnFlip, practiceProfile, onBack
             size="large"
             onClick={onPractice}
             aria-label={`Practice ${title} with ${practiceProfile.name}`}
-            startIcon={
-              <Avatar sx={{ width: 26, height: 26, fontSize: 16, bgcolor: avatarColor(practiceProfile.avatar) }}>
-                {practiceProfile.avatar}
-              </Avatar>
-            }
+            startIcon={<ChildAvatar profile={practiceProfile} size={26} />}
             sx={{ flexShrink: 0 }}
           >
             Practice
