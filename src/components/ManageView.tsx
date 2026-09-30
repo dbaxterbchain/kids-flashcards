@@ -60,6 +60,8 @@ type ManageViewProps = {
   hiddenSetIds: string[];
   profiles: ChildProfile[];
   speakOnFlip: boolean;
+  sayIt: boolean;
+  onSayItChange: (value: boolean) => void;
   missingStarterCount: number;
   onDone: () => void;
   onNewCard: (setId?: string) => void;
@@ -617,6 +619,8 @@ function ChildrenTab({ cards, profiles, sets, hiddenSetIds, onAddChild, onEditCh
 
 function SettingsTab({
   speakOnFlip,
+  sayIt,
+  onSayItChange,
   missingStarterCount,
   onSpeakOnFlipChange,
   onRestoreStarters,
@@ -637,6 +641,17 @@ function SettingsTab({
         />
         <Typography variant="body2" color="text.secondary">
           Uses your recording when a card has one, and the device&apos;s voice when it doesn&apos;t.
+        </Typography>
+      </Box>
+
+      <Box>
+        <FormControlLabel
+          control={<Switch checked={sayIt} onChange={(event) => onSayItChange(event.target.checked)} />}
+          label="Show a Say it button on cards"
+        />
+        <Typography variant="body2" color="text.secondary">
+          Kids can record themselves saying the word, then hear their voice next to yours. Recordings aren&apos;t
+          saved. Needs the microphone, so the first time a grown-up may need to allow it.
         </Typography>
       </Box>
 

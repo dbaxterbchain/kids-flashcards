@@ -34,6 +34,7 @@ const BACKUP_VERSION = 1;
 export type BackupSettings = {
   hiddenSetIds: string[];
   speakOnFlip: boolean;
+  sayIt: boolean;
 };
 
 export type Backup = {
@@ -189,6 +190,7 @@ export function parseBackup(text: string): Backup {
     settings: {
       hiddenSetIds: readIds(settings.hiddenSetIds),
       speakOnFlip: typeof settings.speakOnFlip === 'boolean' ? settings.speakOnFlip : true,
+      sayIt: typeof settings.sayIt === 'boolean' ? settings.sayIt : true,
     },
   };
 }
@@ -200,6 +202,7 @@ export async function restoreBackup(backup: Backup) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.hiddenSets, JSON.stringify(backup.settings.hiddenSetIds));
     window.localStorage.setItem(STORAGE_KEYS.speakOnFlip, JSON.stringify(backup.settings.speakOnFlip));
+    window.localStorage.setItem(STORAGE_KEYS.sayIt, JSON.stringify(backup.settings.sayIt));
   } catch (error) {
     console.warn('Unable to restore settings from the backup', error);
   }

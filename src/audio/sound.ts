@@ -112,6 +112,33 @@ export function stopSpeaking() {
   }
 }
 
+/** Whether this browser can record from the microphone at all. */
+export const canRecord = () =>
+  typeof MediaRecorder !== 'undefined' && typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
+
+/**
+ * Plays a recording, like a child's own voice, on the same audio element as the cards' recordings (so
+ * it's allowed to play on iPhones and iPads). Resolves when it ends, stops or can't play.
+ */
+export function playRecording(url: string): Promise<void> {
+  stopSpeaking();
+  if (!voice) voice = new Audio();
+  const element = voice;
+  return new Promise((resolve) => {
+    const finish = () => {
+      element.removeEventListener('ended', finish);
+      element.removeEventListener('pause', finish);
+      element.removeEventListener('error', finish);
+      resolve();
+    };
+    element.addEventListener('ended', finish);
+    element.addEventListener('pause', finish);
+    element.addEventListener('error', finish);
+    element.src = url;
+    element.play().catch(finish);
+  });
+}
+
 /**
  * Says a card's word: the parent's recording when there is one, otherwise the device's voice (in the
  * card's language, when it has one).

@@ -1,9 +1,12 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { canRecord } from '../audio/sound';
 import { GAME_INFO, GameKind } from '../flashcards/games';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { ChildAvatar } from './ChildAvatar';
 import { FlashcardGrid } from './FlashcardGrid';
+import { SayItDialog } from './SayItDialog';
 
 type PlaySetViewProps = {
   title: string;
@@ -16,6 +19,8 @@ type PlaySetViewProps = {
   /** Games that can be played with these cards. */
   games?: GameKind[];
   onPlayGame?: (game: GameKind) => void;
+  /** Whether cards get a "Say it" button (when the device can record). */
+  sayIt?: boolean;
 };
 
 /** One set's cards for kids to flip through, with a shortcut to practice just this set. */
@@ -28,7 +33,9 @@ export function PlaySetView({
   onPractice,
   games = [],
   onPlayGame,
+  sayIt = false,
 }: PlaySetViewProps) {
+  const [sayingCard, setSayingCard] = useState<FlashcardData | null>(null);
   return (
     <Box component="section" aria-labelledby="set-heading">
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
@@ -78,7 +85,8 @@ export function PlaySetView({
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Tap a card to flip it over.
       </Typography>
-      <FlashcardGrid cards={cards} speakOnFlip={speakOnFlip} />
+      <FlashcardGrid cards={cards} speakOnFlip={speakOnFlip} onSayIt={sayIt && canRecord() ? setSayingCard : undefined} />
+      <SayItDialog card={sayingCard} onClose={() => setSayingCard(null)} />
     </Box>
   );
 }

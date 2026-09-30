@@ -8,9 +8,18 @@ type FlashcardGridProps = {
   speakOnFlip?: boolean;
   onEdit?: (card: FlashcardData) => void;
   onDelete?: (card: FlashcardData) => void;
+  /** Adds a "Say it" button to each card's back. */
+  onSayIt?: (card: FlashcardData) => void;
 };
 
-export function FlashcardGrid({ cards, showActions = false, speakOnFlip = false, onEdit, onDelete }: FlashcardGridProps) {
+export function FlashcardGrid({
+  cards,
+  showActions = false,
+  speakOnFlip = false,
+  onEdit,
+  onDelete,
+  onSayIt,
+}: FlashcardGridProps) {
   return (
     <Box
       sx={{
@@ -29,6 +38,7 @@ export function FlashcardGrid({ cards, showActions = false, speakOnFlip = false,
           speakOnFlip={speakOnFlip}
           onEdit={onEdit && (() => onEdit(card))}
           onDelete={onDelete && (() => onDelete(card))}
+          onSayIt={onSayIt && (() => onSayIt(card))}
         />
       ))}
     </Box>

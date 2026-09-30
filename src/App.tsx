@@ -97,6 +97,7 @@ export default function App() {
   // Sets hidden from kids. Hidden (rather than shown) ids are saved so new sets show up by default.
   const [hiddenSetIds, setHiddenSetIds] = useLocalStorageState<string[]>(STORAGE_KEYS.hiddenSets, []);
   const [speakOnFlip, setSpeakOnFlip] = useLocalStorageState(STORAGE_KEYS.speakOnFlip, true);
+  const [sayIt, setSayIt] = useLocalStorageState(STORAGE_KEYS.sayIt, true);
   const [lastBackupAt, setLastBackupAt] = useLocalStorageState<number | null>(STORAGE_KEYS.lastBackupAt, null);
   const [parentUnlocked, setParentUnlocked] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -298,7 +299,7 @@ export default function App() {
   };
 
   const handleSaveBackup = async () => {
-    const result = await saveBackupFile(await createBackup({ hiddenSetIds, speakOnFlip }));
+    const result = await saveBackupFile(await createBackup({ hiddenSetIds, speakOnFlip, sayIt }));
     if (result !== 'cancelled') setLastBackupAt(Date.now());
     return result;
   };
@@ -454,6 +455,8 @@ export default function App() {
           onAddChild={openAddChild}
           onEditChild={openEditChild}
           onSpeakOnFlipChange={setSpeakOnFlip}
+          sayIt={sayIt}
+          onSayItChange={setSayIt}
           onRestoreStarters={handleRestoreStarters}
           lastBackupAt={lastBackupAt}
           showBackupReminder={showBackupReminder}
@@ -473,6 +476,7 @@ export default function App() {
         onPractice={() => startPractice(openTile.cards)}
         games={availableGames}
         onPlayGame={startGame}
+        sayIt={sayIt}
       />
     );
   } else {

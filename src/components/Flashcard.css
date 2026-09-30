@@ -90,6 +90,13 @@
   bottom: 10px;
 }
 
+.flashcard-back .flashcard-say-it {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  color: #047857;
+}
+
 /* Cards in a grid of tiles size themselves from their width instead of a fixed height. */
 .flashcard.flashcard--tile {
   min-height: 0;

@@ -94,7 +94,7 @@ describe('parseBackup', () => {
     expect(parsed.cards).toHaveLength(2);
     expect(parsed.cards[0]).toMatchObject({ imageUrl: PNG, audioUrl: WAV, backgroundColor: 'pink', setIds: ['family'] });
     expect(parsed.sets).toEqual([{ id: 'family', name: 'Family' }]);
-    expect(parsed.settings).toEqual({ hiddenSetIds: ['family'], speakOnFlip: false });
+    expect(parsed.settings).toEqual({ hiddenSetIds: ['family'], speakOnFlip: false, sayIt: true });
   });
 
   it('keeps children, fixing settings that are out of range', () => {
