@@ -5,7 +5,7 @@ Ideas for making Kids Flashcards more fun and more effective for kids from age 2
 ## Done
 
 ### Most recent
-- **Easier tapping for small hands:** cards and answers turn over or are picked the moment a finger touches them, so sliding fingers, slow presses and double taps all count once; double taps no longer zoom, long presses no longer open the browser's menu, and scrolling past cards leaves them face down.
+- **Easier tapping for small hands:** cards and answers turn over or are picked the moment a finger touches them, so sliding fingers, slow presses and double taps all count once; a finger dragged across a card turns it and it stays turned; double taps no longer zoom, and long presses no longer open the browser's menu.
 - **Kid lock:** a Grown-ups setting that fills the screen, keeps back swipes and the back button in the app, asks before the page closes, hides links to other websites and stops pinch zoom, with steps for the device's own lock (Guided Access, App pinning) that stops the home button too.
 
 ### Before that

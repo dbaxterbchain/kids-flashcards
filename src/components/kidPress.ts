@@ -7,10 +7,6 @@ import { MouseEvent, PointerEvent } from 'react';
 
 /** A second touch on the same thing this soon after the last is the same wobbly tap. */
 export const REPEAT_MS = 450;
-/** A touch that scrolled the page at least this far was a grown-up scrolling, not a tap. */
-const SCROLLED_PX = 64;
-/** How long to wait for the scroll to settle before deciding. */
-const SCROLL_SETTLE_MS = 350;
 /** A click this long after a touch isn't that touch's (a touch that scrolled never gets one). */
 const CLICK_AFTER_TOUCH_MS = 10_000;
 
@@ -28,16 +24,11 @@ const isOwnPress = (event: { target: EventTarget; currentTarget: Element }) =>
 export const isRepeatTouch = (lastTouchAt: number | undefined, now: number) =>
   lastTouchAt !== undefined && now - lastTouchAt < REPEAT_MS;
 
-export type KidPressOptions = {
-  /** Takes the press back (like turning a card face down again) when the touch was a scroll. */
-  onScrolled?: () => void;
-};
-
 /**
  * Props that make `action` happen when a finger (or mouse button) first touches the element.
  * Keyboards and screen readers, which click without touching, still work through the click.
  */
-export function kidPress(action: () => void, options: KidPressOptions = {}) {
+export function kidPress(action: () => void) {
   return {
     onPointerDown(event: PointerEvent<HTMLElement>) {
       if (event.button !== 0 || !isOwnPress(event)) return;
@@ -46,25 +37,8 @@ export function kidPress(action: () => void, options: KidPressOptions = {}) {
       const previous = presses.get(element);
       // The click that follows this touch is the same press, so it's skipped.
       presses.set(element, { lastTouchAt: now, clickPending: true });
-      if (isRepeatTouch(previous?.lastTouchAt, now)) return;
-      action();
-
-      const { onScrolled } = options;
-      if (!onScrolled) return;
-      const startY = window.scrollY;
-      const { pointerId } = event;
-      const finish = (ended: globalThis.PointerEvent) => {
-        if (ended.pointerId !== pointerId) return;
-        element.removeEventListener('pointerup', finish);
-        element.removeEventListener('pointercancel', finish);
-        // The browser takes a touch away from the page (pointercancel) when it starts scrolling.
-        if (ended.type !== 'pointercancel') return;
-        window.setTimeout(() => {
-          if (Math.abs(window.scrollY - startY) >= SCROLLED_PX) onScrolled();
-        }, SCROLL_SETTLE_MS);
-      };
-      element.addEventListener('pointerup', finish);
-      element.addEventListener('pointercancel', finish);
+      // A finger dragged across the card (even one that scrolls the page) still turns it, for good.
+      if (!isRepeatTouch(previous?.lastTouchAt, now)) action();
     },
     onClick(event: MouseEvent<HTMLElement>) {
       if (!isOwnPress(event)) return;

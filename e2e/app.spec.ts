@@ -319,16 +319,19 @@ test('a wobbly touch turns a card over, and a double tap turns it just once', as
   await expect(two).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('scrolling past the cards leaves them face down', async ({ page }, testInfo) => {
+test('a long drag across a card turns it over and leaves it turned', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'phone', 'Needs a touch screen');
   await setTile(page, 'Numbers 0-10').click();
   const card = page.getByRole('button', { name: 'Flashcard for Four', exact: true });
   await card.scrollIntoViewIfNeeded();
   const start = await centerOf(page, 'Flashcard for Four');
   const scrolledBefore = await page.evaluate(() => window.scrollY);
+  // A drag far enough to scroll the page.
   await touchSlide(page, start.x, start.y, 0, -300);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrolledBefore + 100);
-  await expect(card).toHaveAttribute('aria-pressed', 'false');
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(1000);
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('kid lock keeps kids in the app until a grown-up turns it off', async ({ page }) => {

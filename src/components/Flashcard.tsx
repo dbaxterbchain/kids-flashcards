@@ -5,7 +5,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { Card, IconButton, Stack, styled } from '@mui/material';
 import { KeyboardEvent, useState } from 'react';
-import { speakCard, stopSpeaking } from '../audio/sound';
+import { speakCard } from '../audio/sound';
 import { fitStyle } from '../flashcards/textFit';
 import { useFontsVersion } from '../hooks/useFontsVersion';
 import { FlashcardData } from '../flashcards/types';
@@ -72,14 +72,7 @@ export function Flashcard({
   return (
     <StyledCard
       className={['flashcard', isFlipped ? 'flipped' : '', className ?? ''].filter(Boolean).join(' ')}
-      {...kidPress(toggleFlip, {
-        // Scrolling past the cards turns back any card the scroll started on.
-        onScrolled: () => {
-          if (disableFlip) return;
-          setFlipped(isFlipped);
-          stopSpeaking();
-        },
-      })}
+      {...kidPress(toggleFlip)}
       onKeyDown={handleKey}
       tabIndex={disableFlip ? -1 : 0}
       role={disableFlip ? undefined : 'button'}
