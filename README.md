@@ -12,6 +12,8 @@ A kid-friendly React + TypeScript web app for building, flipping, and hearing pe
 - Share any set as a single file (pictures, recordings, colors, and languages included) and import sets others share, with a preview first. Installed on Android, the app appears in the share sheet for set files; on computers, set files can be opened with it.
 - Print any set as two-sided flashcards, six to a page, with cut lines.
 - A kid-friendly Play mode: big set tiles, two cards per row on phones, and the word said aloud when a card flips.
+- Made for small, unsteady hands: cards and answers respond the moment a finger touches them, so a finger that slides, presses slowly or taps twice still counts once. A double tap doesn't zoom, a long press doesn't open the browser's menu, and scrolling past a card leaves it face down.
+- Kid lock: fills the screen, keeps back swipes and the back button in the app, asks before the page closes, hides links to other websites and stops pinch zoom, until a grown-up turns it off. Grown-ups › Settings also explains the device's own lock (Guided Access on iPhone and iPad, App pinning on Android), which stops the home button and app switching too.
 - A Grown-ups area behind a simple parent gate (a multiplication question) for adding, editing, and deleting cards, managing sets (rename, add a "How this set works" introduction, delete, hide from kids), and setting up each child. Deleting a card can be undone.
 - Smooth 3D flip animation and responsive MUI layout designed for tablets and laptops.
 - Practice for each child: a profile per child (name, an emoji avatar from themed groups or a photo, age-based settings) with separate spaced-repetition progress.
@@ -64,7 +66,7 @@ GitHub Actions runs lint, the unit tests, the build, and the browser tests on ev
 
 ## Usage
 1. Start the dev server and open the app.
-2. Kids tap a set, then tap cards to flip them (Space/Enter works too).
+2. Kids tap a set, then touch cards to flip them (Space/Enter works too).
 3. Grown-ups tap the lock button and answer the question to open the Grown-ups area.
 4. Under **Cards**, click **New card**: choose the front (a photo, a color, or text), type the word for the back, optionally record your voice saying it (up to 10s), and pick its sets.
 5. Under **Sets**, open the **Set library** to add ready-made sets, **Import a set** someone shared with you, share a set with the share button, or edit (name and "How this set works"), delete, or hide a set from kids. Deleting a set can also delete the cards that are only in it.
@@ -72,6 +74,7 @@ GitHub Actions runs lint, the unit tests, the build, and the browser tests on ev
 7. Back in Play mode, pick who's practicing and press **Start**, or open a set and press **Practice** to practice just that set, or play one of its games.
 8. To print a set, open its menu under **Sets** and choose **Print**.
 9. Under **Settings**, **Voices** lets you hear and pick the voice that reads each language your cards use.
+10. Under **Settings**, turn on **Kid lock** before handing the device to a child.
 
 ## Project Structure
 ```
@@ -97,7 +100,7 @@ public/
 - A shared set is a smaller JSON file with one set's cards and no children or progress. Importing one always adds a new set and never changes existing cards.
 - Backups and set files are checked when opened: only embedded pictures and recordings (never links), plain colors, language tags, and known fields are kept.
 - The set library's pictures are emoji and small generated drawings, so the library is a small download that's only loaded when a grown-up opens it (and is cached for offline use). Its emoji are all from Emoji 12.0 (2019) or earlier, so Windows 10 and older phones show them; a unit test keeps it that way.
-- Choices of voice are kept on the device (voices differ from device to device), not in backups.
+- Choices of voice are kept on the device (voices differ from device to device), not in backups. So is kid lock.
 
 ## Branding
 - **Logo:** two flashcards, a white one with a gold star in front of a pink-to-yellow one, on a blue rounded square. It's drawn by `scripts/brand/logo.mjs` and saved as `public/logo.svg`.

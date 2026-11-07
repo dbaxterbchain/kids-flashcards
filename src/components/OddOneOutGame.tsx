@@ -8,6 +8,7 @@ import { playSound, speakCard, stopSpeaking } from '../audio/sound';
 import { buildOddOneOut, GAME_INFO, GAME_ROUND, oddOneOutBelonging } from '../flashcards/games';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
+import { kidPress } from './kidPress';
 import { GameFrame, GameReward, GameSummary } from './GameParts';
 import './Games.css';
 
@@ -141,7 +142,7 @@ export function OddOneOutGame({ title, setCards, otherCards, profile, reward, on
               key={item.id}
               focusRipple
               className={`practice-tile practice-tile--${state}`}
-              onClick={() => pick(item)}
+              {...kidPress(() => pick(item))}
               aria-label={item.name}
               aria-disabled={solved || isWrong}
               tabIndex={solved || isWrong ? -1 : 0}

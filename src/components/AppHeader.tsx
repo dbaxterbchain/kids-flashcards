@@ -23,9 +23,11 @@ const introSteps: { icon: ReactNode; text: string }[] = [
 
 type AppHeaderProps = {
   onOpenGrownUps: () => void;
+  /** With kid lock on, nothing here leads out of the app. */
+  kidLock?: boolean;
 };
 
-export function AppHeader({ onOpenGrownUps }: AppHeaderProps) {
+export function AppHeader({ onOpenGrownUps, kidLock = false }: AppHeaderProps) {
   const [introDismissed, setIntroDismissed] = useLocalStorageState('kids-flashcards:intro-dismissed', false);
   const introOpen = !introDismissed;
 
@@ -65,9 +67,15 @@ export function AppHeader({ onOpenGrownUps }: AppHeaderProps) {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Brought to you free by{' '}
-            <Link href="https://bchain.coffee" target="_blank" rel="noreferrer" underline="hover" fontWeight={700}>
-              Beanchain Coffee
-            </Link>
+            {kidLock ? (
+              <Box component="span" sx={{ fontWeight: 700 }}>
+                Beanchain Coffee
+              </Box>
+            ) : (
+              <Link href="https://bchain.coffee" target="_blank" rel="noreferrer" underline="hover" fontWeight={700}>
+                Beanchain Coffee
+              </Link>
+            )}
           </Typography>
         </Box>
         <IconButton

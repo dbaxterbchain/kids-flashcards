@@ -9,6 +9,7 @@ import { GAME_INFO, GAME_ROUND, pickQuestions } from '../flashcards/games';
 import { buildOptions, hashString } from '../flashcards/practice';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
+import { kidPress } from './kidPress';
 import { GameFrame, GameReward, GameSummary } from './GameParts';
 import './Games.css';
 
@@ -115,7 +116,7 @@ export function ListenGame({ title, cards, profile, reward, onFinish, onPlayAgai
       </div>
       {card && (
         <Stack spacing={1.5} alignItems="center">
-          <ButtonBase className="listen-speaker" focusRipple onClick={() => speakCard(card)} aria-label="Hear it again">
+          <ButtonBase className="listen-speaker" focusRipple {...kidPress(() => speakCard(card))} aria-label="Hear it again">
             <VolumeUpIcon />
           </ButtonBase>
           <div className="practice-status" role="status">
@@ -142,7 +143,7 @@ export function ListenGame({ title, cards, profile, reward, onFinish, onPlayAgai
                   key={option.id}
                   focusRipple
                   className={`practice-tile practice-tile--${state}`}
-                  onClick={() => pick(option)}
+                  {...kidPress(() => pick(option))}
                   aria-label={option.name}
                   aria-disabled={solved || isWrong}
                   tabIndex={solved || isWrong ? -1 : 0}

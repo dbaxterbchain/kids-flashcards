@@ -268,3 +268,98 @@ test('a backup brings everything back', async ({ page }, testInfo) => {
   await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'Replace and restore' }).click()]);
   await expect(setTile(page, 'Colors')).toBeVisible();
 });
+
+/** Touches the screen at a point, slides the finger by (dx, dy) in a few steps, then lifts it. */
+async function touchSlide(page: Page, x: number, y: number, dx: number, dy: number) {
+  const cdp = await page.context().newCDPSession(page);
+  const steps = 5;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let step = 1; step <= steps; step += 1) {
+    const point = { x: x + (dx * step) / steps, y: y + (dy * step) / steps };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
+const centerOf = async (page: Page, name: string) => {
+  const box = await page.getByRole('button', { name }).boundingBox();
+  if (!box) throw new Error(`No ${name} on screen`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+
+test('a wobbly touch turns a card over, and a double tap turns it just once', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'Needs a touch screen');
+  await setTile(page, 'Numbers 0-10').click();
+
+  // A finger that slides a little as it presses (no tap, as far as the browser is concerned).
+  const one = page.getByRole('button', { name: 'Flashcard for One', exact: true });
+  await one.scrollIntoViewIfNeeded();
+  const start = await centerOf(page, 'Flashcard for One');
+  await touchSlide(page, start.x, start.y, 22, 14);
+  await expect(one).toHaveAttribute('aria-pressed', 'true');
+
+  // Two quick taps are one press, so the card stays turned over.
+  const two = page.getByRole('button', { name: 'Flashcard for Two', exact: true });
+  await two.scrollIntoViewIfNeeded();
+  const point = await centerOf(page, 'Flashcard for Two');
+  await page.touchscreen.tap(point.x, point.y);
+  await page.touchscreen.tap(point.x, point.y);
+  await expect(two).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(600);
+  await expect(two).toHaveAttribute('aria-pressed', 'true');
+
+  // A later tap turns it back.
+  await page.touchscreen.tap(point.x, point.y);
+  await expect(two).toHaveAttribute('aria-pressed', 'false');
+
+  // Keyboards still work.
+  await two.focus();
+  await page.keyboard.press('Enter');
+  await expect(two).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('scrolling past the cards leaves them face down', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'Needs a touch screen');
+  await setTile(page, 'Numbers 0-10').click();
+  const card = page.getByRole('button', { name: 'Flashcard for Four', exact: true });
+  await card.scrollIntoViewIfNeeded();
+  const start = await centerOf(page, 'Flashcard for Four');
+  const scrolledBefore = await page.evaluate(() => window.scrollY);
+  await touchSlide(page, start.x, start.y, 0, -300);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrolledBefore + 100);
+  await expect(card).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('kid lock keeps kids in the app until a grown-up turns it off', async ({ page }) => {
+  await expect(page.getByRole('link', { name: 'Beanchain Coffee' })).toBeVisible();
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('switch', { name: 'Kid lock' }).check();
+  await expect(page.locator('html')).toHaveClass(/kid-lock/);
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // Nothing on the home screen leads to another website.
+  await expect(page.getByText('Beanchain Coffee')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Beanchain Coffee' })).toHaveCount(0);
+
+  // Going back from a set goes home, and going back from home stays home.
+  await setTile(page, 'Numbers 0-10').click();
+  await expect(page.getByRole('button', { name: 'Flashcard for Three', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'What shall we learn?' })).toBeVisible();
+  await page.goBack();
+  await page.goBack();
+  await expect(page).toHaveURL(/localhost:4173\/#\/$/);
+  await expect(page.getByRole('heading', { name: 'What shall we learn?' })).toBeVisible();
+
+  // Still on after a reload, and off again from Grown-ups.
+  await page.reload();
+  await expect(page.locator('html')).toHaveClass(/kid-lock/);
+  await openGrownUps(page);
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('switch', { name: 'Kid lock' }).uncheck();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('html')).not.toHaveClass(/kid-lock/);
+  await expect(page.getByRole('link', { name: 'Beanchain Coffee' })).toBeVisible();
+});

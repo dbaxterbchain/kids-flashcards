@@ -53,6 +53,7 @@ import { ChildAvatar } from './ChildAvatar';
 import { ChildProgressDialog } from './ChildProgressDialog';
 import { DeleteSetDialog } from './DeleteSetDialog';
 import { FlashcardGrid } from './FlashcardGrid';
+import { KidLockSection } from './KidLockSection';
 import { SetImportDialog } from './SetImportDialog';
 import { PrintSetDialog } from './PrintSetDialog';
 import { SetLibraryDialog } from './SetLibraryDialog';
@@ -69,6 +70,8 @@ type ManageViewProps = {
   speakOnFlip: boolean;
   sayIt: boolean;
   onSayItChange: (value: boolean) => void;
+  kidLock: boolean;
+  onKidLockChange: (value: boolean) => void;
   missingStarterCount: number;
   onDone: () => void;
   onNewCard: (setId?: string) => void;
@@ -781,6 +784,8 @@ function SettingsTab({
   speakOnFlip,
   sayIt,
   onSayItChange,
+  kidLock,
+  onKidLockChange,
   missingStarterCount,
   onSpeakOnFlipChange,
   onRestoreStarters,
@@ -793,6 +798,8 @@ function SettingsTab({
   return (
     <Stack spacing={3}>
       <BackupSection lastBackupAt={lastBackupAt} onSave={onSaveBackup} onRestore={onRestoreBackup} />
+
+      <KidLockSection kidLock={kidLock} onKidLockChange={onKidLockChange} />
 
       <Box>
         <FormControlLabel

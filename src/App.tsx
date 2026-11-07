@@ -41,10 +41,14 @@ import {
 import { RemoveSetOptions, useCardLibrary } from './hooks/useCardLibrary';
 import { useChildProfiles } from './hooks/useChildProfiles';
 import { useHashRoute } from './hooks/useHashRoute';
+import { enterFullscreen, exitFullscreen, useKidLock, useKidScreen } from './hooks/useKidLock';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { usePwa } from './hooks/usePwa';
 
 const ALL_CARDS_ID = 'all';
+
+// Kid lock is about this device, so it's kept out of backups.
+const KID_LOCK_KEY = 'kids-flashcards:kid-lock';
 
 const STARTER_CARD_IDS = new Set(defaultCards.map((card) => card.id));
 
@@ -103,6 +107,7 @@ export default function App() {
   const [sayIt, setSayIt] = useLocalStorageState(STORAGE_KEYS.sayIt, true);
   const [lastBackupAt, setLastBackupAt] = useLocalStorageState<number | null>(STORAGE_KEYS.lastBackupAt, null);
   const [parentUnlocked, setParentUnlocked] = useState(false);
+  const [kidLock, setKidLock] = useLocalStorageState(KID_LOCK_KEY, false);
   const [notice, setNotice] = useState<string | null>(null);
   const [deletedCard, setDeletedCard] = useState<FlashcardData | null>(null);
   const [cardEditor, setCardEditor] = useState<CardEditorState>({ open: false, key: 0, card: null });
@@ -216,6 +221,34 @@ export default function App() {
   const showBackupReminder = hasOwnContent && (lastBackupAt === null || Date.now() - lastBackupAt > BACKUP_REMINDER_MS);
   const defaultAvatar =
     AVATARS.find((avatar) => !profiles.some((profile) => profile.avatar === avatar.emoji))?.emoji ?? AVATARS[0].emoji;
+
+  // Everywhere but an unlocked Grown-ups is somewhere a child might be tapping.
+  const onKidScreen = !(route.name === 'manage' && parentUnlocked);
+  useKidScreen(onKidScreen);
+  useKidLock(kidLock, onKidScreen);
+
+  // Turning kid lock on is a tap, so the screen can fill right away.
+  const handleKidLockChange = (value: boolean) => {
+    setKidLock(value);
+    if (value) enterFullscreen();
+    else exitFullscreen();
+  };
+
+  // Cards speak the moment a finger touches them, which Safari only allows once a full tap (like
+  // opening a set) has switched sound on.
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio();
+      window.removeEventListener('click', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+    window.addEventListener('click', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('click', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+  }, []);
 
   // Some browsers list their voices a moment after the page loads; asking now means cards in other
   // languages get the right voice from the first tap.
@@ -491,6 +524,8 @@ export default function App() {
           onSpeakOnFlipChange={setSpeakOnFlip}
           sayIt={sayIt}
           onSayItChange={setSayIt}
+          kidLock={kidLock}
+          onKidLockChange={handleKidLockChange}
           onRestoreStarters={handleRestoreStarters}
           lastBackupAt={lastBackupAt}
           showBackupReminder={showBackupReminder}
@@ -517,7 +552,7 @@ export default function App() {
   } else {
     screen = (
       <>
-        <AppHeader onOpenGrownUps={openGrownUps} />
+        <AppHeader onOpenGrownUps={openGrownUps} kidLock={kidLock} />
         {noticeAlert}
 
         <PracticePanel
@@ -564,16 +599,19 @@ export default function App() {
   const gateOpen = route.name === 'manage' && !parentUnlocked;
 
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
-      <PwaPromptBanner
-        canInstall={canInstall}
-        onInstall={promptInstall}
-        updateAvailable={updateAvailable}
-        onUpdate={reloadForUpdate}
-        offlineReady={offlineReady}
-        onDismissOfflineReady={dismissOfflineReady}
-        isOffline={isOffline}
-      />
+    <Box className={onKidScreen ? 'kid-screen' : undefined} sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 8 }}>
+      {/* With kid lock on, install and update prompts wait for Grown-ups, out of reach of little fingers. */}
+      {!(kidLock && onKidScreen) && (
+        <PwaPromptBanner
+          canInstall={canInstall}
+          onInstall={promptInstall}
+          updateAvailable={updateAvailable}
+          onUpdate={reloadForUpdate}
+          offlineReady={offlineReady}
+          onDismissOfflineReady={dismissOfflineReady}
+          isOffline={isOffline}
+        />
+      )}
       <Container maxWidth={route.name === 'practice' ? 'md' : 'lg'} sx={{ py: { xs: 2, sm: 4 } }}>
         {screen}
       </Container>
