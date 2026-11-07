@@ -6,6 +6,7 @@ import { fitStyle } from '../flashcards/textFit';
 import { ChildProfile, FlashcardData } from '../flashcards/types';
 import { useFontsVersion } from '../hooks/useFontsVersion';
 import { CardFront } from './CardFront';
+import { kidPress } from './kidPress';
 import { GameFrame, GameReward, GameSummary } from './GameParts';
 import './Games.css';
 
@@ -108,7 +109,7 @@ export function MemoryGame({ title, cards, profile, reward, onFinish, onPlayAgai
               key={tile.key}
               focusRipple
               className={`memory-tile${isOpen ? ' is-open' : ''}${isMatched ? ' is-matched' : ''}`}
-              onClick={() => flip(tile)}
+              {...kidPress(() => flip(tile))}
               aria-label={isOpen ? (tile.face === 'word' ? `Word: ${card.name}` : `Picture: ${card.name}`) : `Card ${index + 1}`}
               aria-disabled={isMatched}
             >

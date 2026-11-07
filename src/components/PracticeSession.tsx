@@ -12,6 +12,7 @@ import { buildOptions, hashString, promptSideFor } from '../flashcards/practice'
 import { fitStyle } from '../flashcards/textFit';
 import { ChildProfile, DifficultyChange, FlashcardData, Sticker } from '../flashcards/types';
 import { CardFront } from './CardFront';
+import { kidPress } from './kidPress';
 import { ChildAvatar } from './ChildAvatar';
 import { Confetti } from './Confetti';
 import { Explanation, ExplainDialog } from './ExplainDialog';
@@ -263,7 +264,7 @@ export function PracticeSession({
             key={introCard.id}
             focusRipple
             className="practice-intro__card"
-            onClick={() => speakCard(introCard)}
+            {...kidPress(() => speakCard(introCard))}
             aria-label={`Hear ${introCard.name}`}
           >
             <CardFront card={introCard} alt="" />
@@ -382,7 +383,7 @@ export function PracticeSession({
                     key={option.id}
                     focusRipple
                     className={`practice-tile practice-tile--${state}`}
-                    onClick={() => handlePick(option)}
+                    {...kidPress(() => handlePick(option))}
                     aria-label={option.name}
                     aria-disabled={locked}
                     tabIndex={locked ? -1 : 0}
@@ -407,7 +408,7 @@ export function PracticeSession({
                   variant={isAnswer ? 'contained' : 'outlined'}
                   color={isAnswer ? 'success' : isWrong ? 'error' : 'primary'}
                   startIcon={isAnswer ? <CheckIcon /> : isWrong ? <CloseIcon /> : undefined}
-                  onClick={() => handlePick(option)}
+                  {...kidPress(() => handlePick(option))}
                   aria-disabled={locked}
                   tabIndex={locked ? -1 : 0}
                   className={`practice-word practice-tile--${state}`}

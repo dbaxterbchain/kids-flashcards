@@ -10,6 +10,7 @@ import { fitStyle } from '../flashcards/textFit';
 import { useFontsVersion } from '../hooks/useFontsVersion';
 import { FlashcardData } from '../flashcards/types';
 import { CardFront } from './CardFront';
+import { kidPress } from './kidPress';
 import './Flashcard.css';
 
 type FlashcardProps = {
@@ -71,7 +72,7 @@ export function Flashcard({
   return (
     <StyledCard
       className={['flashcard', isFlipped ? 'flipped' : '', className ?? ''].filter(Boolean).join(' ')}
-      onClick={toggleFlip}
+      {...kidPress(toggleFlip)}
       onKeyDown={handleKey}
       tabIndex={disableFlip ? -1 : 0}
       role={disableFlip ? undefined : 'button'}
